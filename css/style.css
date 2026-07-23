@@ -869,63 +869,6 @@ input:focus-visible {
 
 /* ─────────── 背卡：活動列表 ─────────── */
 
-.ev-card {
-  display: flex;
-  gap: 14px;
-  width: 100%;
-  align-items: center;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 12px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  color: inherit;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.ev-card:hover {
-  border-color: var(--gold);
-  transform: translateY(-2px);
-}
-
-.ev-covers {
-  display: flex;
-  flex: 0 0 auto;
-}
-
-.ev-covers img {
-  width: 54px;
-  height: 54px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-}
-
-.ev-covers img + img {
-  margin-left: -18px;
-}
-
-.ev-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.ev-name {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.ev-date {
-  font-size: 11.5px;
-  color: var(--dim);
-}
-
 .ev-prog {
   display: flex;
   align-items: center;
@@ -960,68 +903,6 @@ input:focus-visible {
 
 .crumb:hover {
   color: var(--gold);
-}
-
-.bg-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.bg-card-item {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 12px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  color: inherit;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.bg-card-item:hover {
-  border-color: var(--gold);
-  transform: translateY(-2px);
-}
-
-.bg-card-item > img {
-  width: 76px;
-  height: 76px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  flex: 0 0 auto;
-}
-
-.bg-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.bg-title {
-  font-size: 14.5px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-
-.bg-title em {
-  font-style: normal;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  padding: 2px 8px;
-  border-radius: 9px;
 }
 
 .scope-global {
@@ -1118,4 +999,125 @@ input:focus-visible {
   font-size: 11px;
   color: var(--dim);
   font-weight: 400;
+}
+
+/* ─────────── 背卡總覽（大圖網格） ─────────── */
+
+.bg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.bg-tile {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.bg-tile:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.bg-thumb-wrap {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bg-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bg-thumb-wrap em {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  padding: 3px 9px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+}
+
+.scope-global {
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.scope-regional {
+  background: var(--shiny);
+  color: #fff;
+}
+
+.bg-tile-body {
+  padding: 11px 13px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bg-tile-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.bg-tile-ev {
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.4;
+}
+
+.bg-tile-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.bg-tile-foot .bar {
+  flex: 1;
+}
+
+.ev-n {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 13px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+.bg-ev-line {
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 3px;
+}
+
+/* 造型註記（例如「布蘭琪風」） */
+.cell .note {
+  display: block;
+  font-size: 10px;
+  color: var(--bg-card);
+  line-height: 1.3;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
