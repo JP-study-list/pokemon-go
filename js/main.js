@@ -95,12 +95,18 @@ function toggleBg(entryKey, cardId) {
     const p = state.list.find((x) => x.id === entryKey);
     if (!p) return;
     p.bg = p.bg || [];
+    p.bgShiny = p.bgShiny || [];
     const i = p.bg.indexOf(cardId);
-    if (i >= 0) p.bg.splice(i, 1);
-    else p.bg.push(cardId);
+    if (i >= 0) {
+      p.bg.splice(i, 1);
+      // 取消背卡時一併清掉異色，避免留下沒有背卡的異色紀錄
+      p.bgShiny = p.bgShiny.filter((c) => c !== cardId);
+    } else {
+      p.bg.push(cardId);
+    }
   } else {
     const arr = (state.extraBg[cardId] ||= []);
-    const i = arr.indexOf(entryKey);
+    const i = arr.findIndex((k) => k === entryKey || k === `${entryKey}*`);
     if (i >= 0) arr.splice(i, 1);
     else arr.push(entryKey);
     if (!arr.length) delete state.extraBg[cardId];
@@ -108,6 +114,32 @@ function toggleBg(entryKey, cardId) {
 
   draw();
   if (ui.isSheetOpen()) drawDetail();
+  save();
+}
+
+/**
+ * 切換某張背卡上該項目的異色標記。
+ * 異色是背卡的子狀態，沒有背卡就不能標記。
+ */
+function toggleBgShiny(entryKey, cardId) {
+  if (!state.user) return;
+
+  if (entryKey.startsWith("p")) {
+    const p = state.list.find((x) => x.id === entryKey);
+    if (!p || !(p.bg || []).includes(cardId)) return;
+    p.bgShiny = p.bgShiny || [];
+    const i = p.bgShiny.indexOf(cardId);
+    if (i >= 0) p.bgShiny.splice(i, 1);
+    else p.bgShiny.push(cardId);
+  } else {
+    const arr = state.extraBg[cardId];
+    if (!arr) return;
+    const i = arr.findIndex((k) => k === entryKey || k === `${entryKey}*`);
+    if (i < 0) return; // 沒有背卡，不能標異色
+    arr[i] = arr[i].endsWith("*") ? entryKey : `${entryKey}*`;
+  }
+
+  draw();
   save();
 }
 
@@ -156,9 +188,19 @@ function setSidebar(open) {
 
 document.addEventListener("click", async (e) => {
   // 背卡圖鑑第三層的方格：點一下即切換擁有狀態
-  const bgCell = e.target.closest(".bgcell");
-  if (bgCell) {
-    if (!bgCell.disabled) toggleBg(bgCell.dataset.entry, bgCell.dataset.bgtoggle);
+  // 異色標記要在背卡格之前判斷，否則點擊會被格子攔截
+  const shinyMark = e.target.closest(".shiny-mark");
+  if (shinyMark) {
+    if (!shinyMark.classList.contains("is-locked")) {
+      const card = shinyMark.closest(".bgcell").querySelector(".bgcell-main");
+      toggleBgShiny(shinyMark.dataset.shiny, card.dataset.bgtoggle);
+    }
+    return;
+  }
+
+  const bgMain = e.target.closest(".bgcell-main");
+  if (bgMain) {
+    if (!bgMain.disabled) toggleBg(bgMain.dataset.entry, bgMain.dataset.bgtoggle);
     return;
   }
 
