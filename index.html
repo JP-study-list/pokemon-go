@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IV100 圖鑑</title>
+<meta name="description" content="Pokémon GO 傳說寶可夢收集進度追蹤：XXL、XXS、IV100。">
+<meta name="color-scheme" content="light dark">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://raw.githubusercontent.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<div class="wrap" id="app" hidden>
+
+  <header class="site-head">
+    <div class="head-row">
+      <h1>IV100<span class="sub" id="subtitle"></span></h1>
+      <div class="langs" id="langs"></div>
+      <button class="tool-btn" id="themeBtn" type="button">◐</button>
+      <div class="auth-area" id="authArea"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <p class="guest-notice" id="guestNotice" hidden></p>
+
+  <div class="filter-row">
+    <input type="search" id="q" autocomplete="off">
+    <div id="filters"></div>
+  </div>
+
+  <main id="list"></main>
+
+</div>
+
+<div class="sheet" id="sheet" aria-hidden="true">
+  <div class="panel" id="panel" role="dialog" aria-modal="true"></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

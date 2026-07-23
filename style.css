@@ -1,0 +1,680 @@
+/**
+ * style.css
+ *
+ * 設計 token 全部集中在 :root，改配色只要動這一段。
+ * 深色模式用 body.dark 覆寫同一組變數。
+ */
+
+:root {
+  /* 品牌色 */
+  --gold: #b8860b;
+
+  /* 底色與文字 */
+  --bg: #f5f5f3;
+  --card: #ffffff;
+  --line: #e2e0da;
+  --ink: #22201c;
+  --dim: #7d7870;
+
+  /* 狀態色 */
+  --xxl: #2f6f4f;
+  --xxs: #8a5cc4;
+  --iv: #c8892a;
+  --shiny: #c94f7c;
+  --lucky: #d4a017;
+
+  /* 尺寸 */
+  --radius: 10px;
+  --cell-min: 104px;
+}
+
+body.dark {
+  --bg: #16150f;
+  --card: #211f18;
+  --line: #34312a;
+  --ink: #ece9e0;
+  --dim: #96908a;
+  --xxl: #5fae83;
+  --xxs: #b088e8;
+  --iv: #e0a94a;
+  --shiny: #e87ba3;
+  --lucky: #e8bf45;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Sans TC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 48px;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ─────────── 頁首 ─────────── */
+
+.site-head {
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0 14px;
+  margin-bottom: 16px;
+}
+
+.head-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+h1 {
+  font-family: "Bebas Neue", "Noto Sans TC", sans-serif;
+  font-size: clamp(26px, 5vw, 38px);
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  font-weight: 400;
+  line-height: 1;
+  flex: 1;
+  min-width: 140px;
+}
+
+h1 .sub {
+  display: block;
+  font-family: "Noto Sans TC", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.langs {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.langs button {
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 11px;
+  height: 32px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.langs button.is-on {
+  background: var(--gold);
+  color: #fff;
+}
+
+.tool-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.tool-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ─────────── 登入區 ─────────── */
+
+.auth-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+
+.btn-signin {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 17px;
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.btn-signin:hover {
+  opacity: 0.88;
+}
+
+.btn-signin:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-text {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-text:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.guest-notice {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--dim);
+  margin-bottom: 14px;
+}
+
+/* ─────────── 統計 ─────────── */
+
+.stats {
+  display: flex;
+  gap: 26px;
+  padding-top: 14px;
+  flex-wrap: wrap;
+}
+
+.stat .n {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.stat .of {
+  font-size: 15px;
+  color: var(--dim);
+}
+
+.stat .l {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  margin-top: 3px;
+}
+
+.bar {
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-top: 6px;
+  width: 78px;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* ─────────── 篩選 ─────────── */
+
+.filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+input[type="search"] {
+  flex: 1;
+  min-width: 150px;
+  height: 36px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 18px;
+  padding: 0 15px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+input[type="search"]:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+#filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--gold);
+}
+
+.chip.is-on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+
+/* ─────────── 卡片牆 ─────────── */
+
+.gen-head {
+  font-family: "Bebas Neue", "Noto Sans TC", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  padding: 18px 0 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.gen-head span {
+  font-family: "Noto Sans TC", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cell-min), 1fr));
+  gap: 10px;
+}
+
+.cell {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 6px 7px;
+  cursor: pointer;
+  position: relative;
+  text-align: center;
+  font-family: inherit;
+  color: inherit;
+  display: block;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.cell:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.cell.is-empty {
+  opacity: 0.5;
+}
+
+.cell img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  display: block;
+}
+
+.cell .nm {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell .dex {
+  display: block;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+
+.pips {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.dark .pip {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.empty {
+  text-align: center;
+  color: var(--dim);
+  padding: 52px 20px;
+  font-size: 13.5px;
+}
+
+/* ─────────── 詳情面板 ─────────── */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+
+.sheet.is-open {
+  display: flex;
+}
+
+.panel {
+  background: var(--card);
+  width: 100%;
+  max-width: 430px;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 20px 30px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slide-up 0.22s ease;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(28px);
+    opacity: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .sheet {
+    align-items: center;
+  }
+  .panel {
+    border-radius: 14px;
+  }
+}
+
+.d-top {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.d-top img {
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.d-top h2 {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.d-alt {
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 4px;
+  line-height: 1.55;
+}
+
+.d-cps {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.cpbox {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px;
+  text-align: center;
+}
+
+.cpbox .k {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
+  color: var(--dim);
+}
+
+.cpbox .v {
+  display: block;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 27px;
+  line-height: 1.15;
+  color: var(--gold);
+}
+
+.cp-none {
+  font-family: "Noto Sans TC", sans-serif;
+  font-size: 15px;
+  color: var(--dim);
+}
+
+.d-sect {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+
+.togs {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tog {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 11px 13px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.tog:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.tog[data-on="1"] {
+  color: var(--tog);
+  border-color: var(--tog);
+}
+
+.tog:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.tog .sw {
+  width: 34px;
+  height: 19px;
+  border-radius: 10px;
+  background: var(--line);
+  position: relative;
+  transition: background 0.18s;
+  flex: 0 0 auto;
+}
+
+.tog .sw::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--card);
+  transition: left 0.18s;
+}
+
+.tog[data-on="1"] .sw {
+  background: var(--tog);
+}
+
+.tog[data-on="1"] .sw::after {
+  left: 17px;
+}
+
+.sub {
+  margin-left: 16px;
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.btn-close {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+.btn-close:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ─────────── 提示訊息 ─────────── */
+
+.toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 9px 18px;
+  border-radius: 19px;
+  font-size: 12.5px;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.toast.is-on {
+  opacity: 1;
+}
+
+/* ─────────── 無障礙 ─────────── */
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+[aria-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

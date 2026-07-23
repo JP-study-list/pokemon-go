@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────
+// 貼到 Firebase Console → Firestore Database → 規則 → 發布
+//
+// 這份規則的重點：使用者只能讀寫自己 uid 底下的文件。
+// 沒登入的人什麼都碰不到，登入的人也讀不到別人的資料。
+//
+// 修改規則後一定要按「發布」才會生效。
+// ─────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // 必須已登入，且只能存取自己的文件
+      allow read: if request.auth != null
+                  && request.auth.uid == uid;
+
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   // 擋掉異常巨大的寫入，避免有人拿你的專案當免費儲存空間
+                   && request.resource.data.keys().hasOnly(['states', 'updated'])
+                   && request.resource.data.states.size() <= 2000;
+    }
+
+    // 其他路徑一律拒絕
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
