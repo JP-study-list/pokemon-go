@@ -10,12 +10,16 @@
  * ── Firestore 結構 ──
  * users/{uid}
  *   states: { p000: {xxl, xxs, iv100:{has,shiny,lucky}}, p001: {...} }
- *   bg:     { "gf26-global": ["p003","d131"], ... }   背卡：卡片 → 已取得的項目
+ *   bg:     { "gf26-global": ["p003*","d131"], ... }  背卡：卡片 → 已取得的項目
  *   updated: 時間戳
  *
  * 背卡的項目鍵有兩種：
  *   "p003"  圖鑑（data.js）裡的傳說
  *   "d131"  一般寶可夢，d 後面接全國圖鑑編號
+ *
+ * 鍵尾加上 "*" 表示該背卡的是異色，例如 "p003*"、"d131*"。
+ * 異色是背卡的子狀態：有 "*" 就一定也算擁有該背卡。
+ * 舊資料沒有 "*"，讀進來就是非異色，不需要轉換。
  */
 
 import {
@@ -36,10 +40,18 @@ export function buildList(states, bg) {
   const saved = states || {};
   const cards = bg || {};
   // 反查：項目鍵 -> [cardId]，避免每張卡都掃一次陣列
+  // 鍵可能帶 "*"（異色），這裡先去掉再比對
   const owned = Object.create(null);
+  const shiny = Object.create(null);
   for (const [cardId, list] of Object.entries(cards)) {
     if (!Array.isArray(list)) continue;
-    for (const key of list) (owned[key] ||= []).push(cardId);
+    for (const raw of list) {
+      if (typeof raw !== "string") continue;
+      const isShiny = raw.endsWith("*");
+      const key = isShiny ? raw.slice(0, -1) : raw;
+      (owned[key] ||= []).push(cardId);
+      if (isShiny) (shiny[key] ||= []).push(cardId);
+    }
   }
   return POKEMON.map((p) => {
     const s = saved[p.id];
@@ -54,6 +66,7 @@ export function buildList(states, bg) {
         lucky: !!(s && s.iv100 && s.iv100.lucky),
       },
       bg: owned[p.id] || [],
+      bgShiny: shiny[p.id] || [],
     };
   });
 }
@@ -82,7 +95,10 @@ function extractStates(list) {
 function extractBg(list, extraBg) {
   const out = {};
   for (const p of list) {
-    for (const cardId of p.bg || []) (out[cardId] ||= []).push(p.id);
+    const sh = new Set(p.bgShiny || []);
+    for (const cardId of p.bg || []) {
+      (out[cardId] ||= []).push(sh.has(cardId) ? `${p.id}*` : p.id);
+    }
   }
   for (const [cardId, keys] of Object.entries(extraBg || {})) {
     if (!Array.isArray(keys)) continue;
@@ -101,6 +117,7 @@ export function extractNonDexBg(bg) {
   const out = {};
   for (const [cardId, keys] of Object.entries(bg || {})) {
     if (!Array.isArray(keys)) continue;
+    // 保留原樣（含 "*"），d 開頭的才是非圖鑑項目
     const rest = keys.filter((k) => typeof k === "string" && k.startsWith("d"));
     if (rest.length) out[cardId] = rest;
   }
