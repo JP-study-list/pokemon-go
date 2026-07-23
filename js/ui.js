@@ -351,7 +351,7 @@ export function renderCardGrid(list, extraBg, lang, t) {
 function countOwned(card, list, extraBg) {
   const byId = Object.create(null);
   for (const p of list) byId[p.id] = p;
-  const extra = new Set((extraBg && extraBg[card.id]) || []);
+  const extra = strip((extraBg && extraBg[card.id]) || []);
   let n = 0;
   for (const e of entriesOf(card)) {
     if (e.pid) {
@@ -359,6 +359,20 @@ function countOwned(card, list, extraBg) {
     } else if (extra.has(e.key)) n++;
   }
   return n;
+}
+
+/** 把帶 "*" 的鍵去掉標記後放進 Set，方便比對 */
+function strip(keys) {
+  const out = new Set();
+  for (const k of keys) out.add(k.endsWith("*") ? k.slice(0, -1) : k);
+  return out;
+}
+
+/** 這些鍵裡哪些是異色 */
+function shinySet(keys) {
+  const out = new Set();
+  for (const k of keys) if (k.endsWith("*")) out.add(k.slice(0, -1));
+  return out;
 }
 
 /** 層級 2：某張背卡的寶可夢方格牆 */
@@ -369,11 +383,13 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
 
   const byId = Object.create(null);
   for (const p of list) byId[p.id] = p;
-  const extra = new Set((extraBg && extraBg[card.id]) || []);
+  const rawExtra = (extraBg && extraBg[card.id]) || [];
+  const extra = strip(rawExtra);
+  const extraShiny = shinySet(rawExtra);
 
   const cells = entriesOf(card)
     .map((e) => {
-      let name, art, no, owned;
+      let name, art, no, owned, isShiny;
       if (e.pid) {
         const p = byId[e.pid];
         if (!p) return "";
@@ -381,6 +397,7 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
         art = artUrl(p.art);
         no = p.no;
         owned = (p.bg || []).includes(card.id);
+        isShiny = (p.bgShiny || []).includes(card.id);
       } else {
         const d = lookup(e.dex, lang);
         if (!d) return "";
@@ -388,16 +405,25 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
         art = d.art;
         no = d.no;
         owned = extra.has(e.key);
+        isShiny = extraShiny.has(e.key);
       }
       const note = e.note ? e.note[lang] || e.note.en : "";
+      // 異色是背卡的子狀態：沒有背卡就不能標記異色
+      const shinyBtn = `
+        <span class="shiny-mark${isShiny ? " is-on" : ""}${owned ? "" : " is-locked"}"
+              data-shiny="${e.key}" title="${esc(t("shiny"))}"
+              role="button" aria-pressed="${isShiny ? "true" : "false"}">✦</span>`;
       return `
-      <button class="cell bgcell${owned ? " is-owned" : " is-empty"}" type="button"
-              data-bgtoggle="${card.id}" data-entry="${e.key}" ${canEdit ? "" : "disabled"}>
-        <img src="${art}" alt="" loading="lazy" decoding="async">
-        <span class="nm">${esc(name)}</span>
-        ${note ? `<span class="note">${esc(note)}</span>` : ""}
-        <span class="dex">${dexNo(no)}</span>
-      </button>`;
+      <div class="cell bgcell${owned ? " is-owned" : " is-empty"}">
+        <button class="bgcell-main" type="button" data-bgtoggle="${card.id}"
+                data-entry="${e.key}" ${canEdit ? "" : "disabled"}>
+          <img src="${art}" alt="" loading="lazy" decoding="async">
+          <span class="nm">${esc(name)}</span>
+          ${note ? `<span class="note">${esc(note)}</span>` : ""}
+          <span class="dex">${dexNo(no)}</span>
+        </button>
+        ${canEdit ? shinyBtn : ""}
+      </div>`;
     })
     .join("");
 
