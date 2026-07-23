@@ -15,27 +15,57 @@
 </head>
 <body>
 
-<div class="wrap" id="app" hidden>
+<div id="app" hidden>
 
-  <header class="site-head">
-    <div class="head-row">
-      <h1>IV100<span class="sub" id="subtitle"></span></h1>
-      <div class="langs" id="langs"></div>
+  <!-- 頂部列 -->
+  <header class="topbar">
+    <button class="tool-btn" id="menuBtn" type="button" aria-expanded="true" aria-controls="sidebar">
+      <span class="ico-menu" aria-hidden="true"></span>
+    </button>
+
+    <h1 class="brand">IV100<span class="brand-sub" id="subtitle"></span></h1>
+
+    <div class="topbar-end">
       <button class="tool-btn" id="themeBtn" type="button">◐</button>
-      <div class="auth-area" id="authArea"></div>
+      <input type="search" id="q" autocomplete="off">
     </div>
-    <div class="stats" id="stats"></div>
   </header>
 
-  <p class="guest-notice" id="guestNotice" hidden></p>
+  <div class="shell">
 
-  <div class="filter-row">
-    <input type="search" id="q" autocomplete="off">
-    <div id="filters"></div>
+    <!-- 側欄 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="side-scroll">
+
+        <section class="side-block">
+          <h2 class="side-title" id="langTitle"></h2>
+          <div class="langs" id="langs"></div>
+        </section>
+
+        <section class="side-block">
+          <h2 class="side-title" id="statsTitle"></h2>
+          <div class="stats" id="stats"></div>
+        </section>
+
+        <section class="side-block">
+          <h2 class="side-title" id="filterTitle"></h2>
+          <nav class="filters" id="filters"></nav>
+        </section>
+
+      </div>
+
+      <div class="side-foot" id="authArea"></div>
+    </aside>
+
+    <!-- 主內容 -->
+    <main class="content">
+      <p class="guest-notice" id="guestNotice" hidden></p>
+      <div id="list"></div>
+    </main>
+
   </div>
 
-  <main id="list"></main>
-
+  <div class="scrim" id="scrim" hidden></div>
 </div>
 
 <div class="sheet" id="sheet" aria-hidden="true">

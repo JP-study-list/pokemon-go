@@ -11,6 +11,7 @@
  */
 
 import { artUrl } from "./data.js";
+import { typeInfo } from "./types.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -69,10 +70,10 @@ export function renderStats(list) {
   $("#stats").innerHTML = rows
     .map(
       ([label, n, color]) => `
-      <div class="stat">
-        <div class="n" style="color:${color}">${n}<span class="of">/${total}</span></div>
-        <div class="l">${label}</div>
-        <div class="bar"><i style="width:${total ? (n / total) * 100 : 0}%;background:${color}"></i></div>
+      <div class="stat-row">
+        <span class="l">${label}</span>
+        <span class="n" style="color:${color}">${n}<span class="of">/${total}</span></span>
+        <span class="bar"><i style="width:${total ? (n / total) * 100 : 0}%;background:${color}"></i></span>
       </div>`
     )
     .join("");
@@ -84,6 +85,7 @@ function renderCard(p, lang) {
   const empty = !p.xxl && !p.xxs && !p.iv100.has;
   const pip = (on, color) =>
     on ? `<i class="pip" style="background:${color}"></i>` : "";
+  const cp = (v) => (v == null ? "—" : v);
   return `
     <button class="cell${empty ? " is-empty" : ""}" data-id="${p.id}" type="button">
       <span class="pips">
@@ -91,7 +93,7 @@ function renderCard(p, lang) {
       </span>
       <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
       <span class="nm">${esc(p[lang])}</span>
-      <span class="dex">${dexNo(p.no)}</span>
+      <span class="dex">${dexNo(p.no)} · ${cp(p.cp20)} / ${cp(p.cp25)}</span>
     </button>`;
 }
 
@@ -135,12 +137,20 @@ export function renderDetail(p, lang, t, canEdit) {
       <span>${label}</span><span class="sw" aria-hidden="true"></span>
     </button>`;
 
+  const badges = (p.types || [])
+    .map((slug) => {
+      const { color, name } = typeInfo(slug, lang);
+      return `<span class="type-tag" style="--tt:${color}">${esc(name)}</span>`;
+    })
+    .join("");
+
   $("#panel").innerHTML = `
     <div class="d-top">
       <img src="${artUrl(p.art)}" alt="" decoding="async">
       <div>
         <h2>${esc(p[lang])}</h2>
         <p class="d-alt">${others}<br>${dexNo(p.no)} · ${t("gen", p.gen)}</p>
+        <p class="d-types">${badges}</p>
       </div>
     </div>
 
@@ -187,6 +197,7 @@ export function renderAuth(user, t) {
       : "";
     box.innerHTML = `
       ${avatar}
+      <span class="who">${esc(user.name)}</span>
       <button class="btn-text" type="button" id="signOutBtn">${t("signOut")}</button>`;
   } else {
     box.innerHTML = `
@@ -207,9 +218,14 @@ export function renderChrome(lang, t) {
   $("#subtitle").textContent = t("subtitle");
   $("#q").placeholder = t("search");
   $("#themeBtn").title = t("tipTheme");
+  $("#menuBtn").title = t("tipMenu");
+  $("#langTitle").textContent = t("sideLang");
+  $("#statsTitle").textContent = t("sideStats");
+  $("#filterTitle").textContent = t("sideFilter");
   document.querySelectorAll(".chip").forEach((c) => {
     const f = FILTERS.find((x) => x.id === c.dataset.filter);
-    if (f) c.textContent = t(f.label);
+    const el = c.querySelector(".txt");
+    if (f && el) el.textContent = t(f.label);
   });
   document.querySelectorAll("#langs button").forEach((b) => {
     b.classList.toggle("is-on", b.dataset.lang === lang);
@@ -217,11 +233,29 @@ export function renderChrome(lang, t) {
   });
 }
 
+/** 側欄開合 */
+export function setSidebar(open) {
+  document.body.classList.toggle("side-closed", !open);
+  $("#menuBtn").setAttribute("aria-expanded", open ? "true" : "false");
+  $("#scrim").hidden = !open;
+}
+
 export function buildFilterBar() {
   $("#filters").innerHTML = FILTERS.map(
     (f, i) =>
-      `<button class="chip${i === 0 ? " is-on" : ""}" type="button" data-filter="${f.id}"></button>`
+      `<button class="chip${i === 0 ? " is-on" : ""}" type="button" data-filter="${f.id}">
+         <span class="txt"></span><span class="count"></span>
+       </button>`
   ).join("");
+}
+
+/** 更新每個篩選旁的數量 */
+export function renderFilterCounts(list) {
+  document.querySelectorAll(".chip").forEach((c) => {
+    const n = applyFilter(list, c.dataset.filter, "").length;
+    const el = c.querySelector(".count");
+    if (el) el.textContent = n;
+  });
 }
 
 export function buildLangSwitch(langs, current) {

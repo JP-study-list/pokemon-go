@@ -59,6 +59,10 @@ export const STRINGS = {
     popupBlocked: "瀏覽器擋住了登入視窗，請允許彈出視窗後再試",
 
     tipTheme: "深色模式",
+    tipMenu: "側邊欄",
+    sideLang: "語言",
+    sideStats: "收集狀態",
+    sideFilter: "篩選",
   },
 
   ja: {
@@ -100,6 +104,10 @@ export const STRINGS = {
     popupBlocked: "ポップアップがブロックされました。許可してから再度お試しください",
 
     tipTheme: "ダークモード",
+    tipMenu: "サイドバー",
+    sideLang: "言語",
+    sideStats: "収集状況",
+    sideFilter: "絞り込み",
   },
 
   en: {
@@ -141,6 +149,10 @@ export const STRINGS = {
     popupBlocked: "Your browser blocked the sign-in window. Allow pop-ups and try again.",
 
     tipTheme: "Dark mode",
+    tipMenu: "Sidebar",
+    sideLang: "Language",
+    sideStats: "Collection",
+    sideFilter: "Filter",
   },
 };
 

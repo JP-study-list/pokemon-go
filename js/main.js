@@ -28,6 +28,7 @@ let t = makeT(state.lang);
 function draw() {
   const shown = ui.applyFilter(state.list, state.filter, state.query);
   ui.renderStats(state.list);
+  ui.renderFilterCounts(state.list);
   ui.renderGrid(shown, state.lang, t);
   ui.renderGuestNotice(!state.user, t);
 }
@@ -84,6 +85,21 @@ function setTheme(dark) {
   } catch (_) {}
 }
 
+/** 窄螢幕時側欄是浮動覆蓋，行為和桌機不同 */
+function isNarrow() {
+  return window.matchMedia("(max-width: 720px)").matches;
+}
+
+function setSidebar(open) {
+  ui.setSidebar(open);
+  // 手機的開合是臨時的，不記憶，避免下次在桌機開啟時是收合狀態
+  if (!isNarrow()) {
+    try {
+      localStorage.setItem("pkm.side", open ? "1" : "0");
+    } catch (_) {}
+  }
+}
+
 /* ─────────── 事件 ─────────── */
 
 document.addEventListener("click", async (e) => {
@@ -113,6 +129,17 @@ document.addEventListener("click", async (e) => {
       .querySelectorAll(".chip")
       .forEach((c) => c.classList.toggle("is-on", c === chip));
     draw();
+    if (isNarrow()) setSidebar(false); // 手機上選完就收起，免得擋住卡片
+    return;
+  }
+
+  if (e.target.id === "menuBtn" || e.target.closest("#menuBtn")) {
+    setSidebar(document.body.classList.contains("side-closed"));
+    return;
+  }
+
+  if (e.target.id === "scrim") {
+    setSidebar(false);
     return;
   }
 
@@ -148,7 +175,12 @@ document.addEventListener("click", async (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && ui.isSheetOpen()) ui.closeSheet();
+  if (e.key !== "Escape") return;
+  if (ui.isSheetOpen()) {
+    ui.closeSheet();
+  } else if (isNarrow() && !document.body.classList.contains("side-closed")) {
+    setSidebar(false);
+  }
 });
 
 $("#q").addEventListener("input", (e) => {
@@ -159,6 +191,23 @@ $("#q").addEventListener("input", (e) => {
 // 離開頁面前把還沒送出的變更寫掉
 window.addEventListener("pagehide", () => {
   flush();
+});
+
+// 視窗跨越手機／桌機分界時，重新套用該尺寸應有的側欄狀態
+let wasNarrow = null;
+window.addEventListener("resize", () => {
+  const narrow = isNarrow();
+  if (narrow === wasNarrow) return;
+  wasNarrow = narrow;
+  if (narrow) {
+    ui.setSidebar(false);
+  } else {
+    let open = true;
+    try {
+      open = localStorage.getItem("pkm.side") !== "0";
+    } catch (_) {}
+    ui.setSidebar(open);
+  }
 });
 
 /* ─────────── 登入狀態 ─────────── */
@@ -214,6 +263,16 @@ function boot() {
   ui.buildFilterBar();
   ui.renderChrome(state.lang, t);
   ui.renderAuth(null, t);
+
+  // 手機預設收合；桌機沿用上次的狀態
+  let open = !isNarrow();
+  if (!isNarrow()) {
+    try {
+      open = localStorage.getItem("pkm.side") !== "0";
+    } catch (_) {}
+  }
+  ui.setSidebar(open);
+
   draw();
   $("#app").hidden = false;
 }
