@@ -63,6 +63,52 @@ export const EVENTS = [
       },
     ],
   },
+
+  {
+    id: "gofest2026-inperson",
+    zh: "GO Fest 2026 實體活動",
+    ja: "GO Fest 2026 リアルイベント",
+    en: "GO Fest 2026: In-Person",
+    date: "2026-05-29 ~ 06-14",
+    cards: [
+      {
+        id: "gf26-tokyo",
+        scope: "regional",
+        img: "./img/bg/gofest2026-tokyo.jpg",
+        zh: "東京",
+        ja: "東京",
+        en: "Tokyo",
+        note_zh: "5/29～6/1 台場，僅限持票者。急凍鳥、水君為當場限定",
+        note_ja: "5/29〜6/1 お台場、チケット所持者限定。フリーザーとスイクンが登場",
+        note_en: "May 29 – Jun 1, Tokyo Waterfront City. Ticket holders only.",
+        pokemon: ["p000", "p006", "p003", "p014", "p015"],
+      },
+      {
+        id: "gf26-chicago",
+        scope: "regional",
+        img: "./img/bg/gofest2026-chicago.jpg",
+        zh: "芝加哥",
+        ja: "シカゴ",
+        en: "Chicago",
+        note_zh: "6/5～6/7 Grant Park，僅限持票者。閃電鳥、雷公為當場限定",
+        note_ja: "6/5〜6/7 グラントパーク、チケット所持者限定。サンダーとライコウが登場",
+        note_en: "Jun 5 – 7, Grant Park. Ticket holders only.",
+        pokemon: ["p001", "p004", "p003", "p014", "p015"],
+      },
+      {
+        id: "gf26-copenhagen",
+        scope: "regional",
+        img: "./img/bg/gofest2026-copenhagen.jpg",
+        zh: "哥本哈根",
+        ja: "コペンハーゲン",
+        en: "Copenhagen",
+        note_zh: "6/12～6/14 Fælledparken，僅限持票者。火焰鳥、炎帝為當場限定",
+        note_ja: "6/12〜6/14 フェレズパーケン、チケット所持者限定。ファイヤーとエンテイが登場",
+        note_en: "Jun 12 – 14, Fælledparken. Ticket holders only.",
+        pokemon: ["p002", "p005", "p003", "p014", "p015"],
+      },
+    ],
+  },
 ];
 
 /** 攤平成 [{event, card}] 方便查詢 */
