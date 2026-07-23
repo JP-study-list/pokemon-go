@@ -82,7 +82,7 @@ export const EVENTS = [
       {
         id: "gf26-tokyo",
         scope: "regional",
-        img: "./img/bg/gofest2026-tokyo.jpg",
+        img: "./img/bg/gofest2026-tokyo.png",
         zh: "東京",
         ja: "東京",
         en: "Tokyo",
@@ -99,7 +99,7 @@ export const EVENTS = [
       {
         id: "gf26-chicago",
         scope: "regional",
-        img: "./img/bg/gofest2026-chicago.jpg",
+        img: "./img/bg/gofest2026-chicago.png",
         zh: "芝加哥",
         ja: "シカゴ",
         en: "Chicago",
@@ -116,7 +116,7 @@ export const EVENTS = [
       {
         id: "gf26-copenhagen",
         scope: "regional",
-        img: "./img/bg/gofest2026-copenhagen.jpg",
+        img: "./img/bg/gofest2026-copenhagen.png",
         zh: "哥本哈根",
         ja: "コペンハーゲン",
         en: "Copenhagen",
