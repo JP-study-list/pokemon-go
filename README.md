@@ -1,6 +1,6 @@
 # IV100 圖鑑
 
-Pokémon GO 傳說寶可夢收集進度追蹤工具。記錄 XXL、XXS、IV100（含異色 / 亮晶晶），
+Pokémon GO 傳說寶可夢收集進度追蹤工具。記錄 XXL、XXS、IV100（含異色 / 亮晶晶）與活動背卡，
 支援繁中・日文・英文切換，用 Google 帳號登入後自動跨裝置同步。
 
 ---
@@ -14,6 +14,8 @@ js/config.js          Firebase 設定
 js/data.js            68 隻寶可夢的基礎資料
 js/i18n.js            三語字典
 js/types.js           屬性顏色與三語名稱
+js/backgrounds.js     活動背卡資料
+img/bg/               背卡圖片
 js/auth.js            Google 登入
 js/store.js           Firestore 讀寫
 js/ui.js              畫面繪製
@@ -29,6 +31,7 @@ firestore.rules       安全規則（需手動貼到 Console）
 | 改配色、字級、間距 | `css/style.css` 的 `:root` |
 | 改介面文字、加語言 | `js/i18n.js` |
 | 改屬性配色 | `js/types.js` |
+| 新增活動背卡 | `js/backgrounds.js` + `img/bg/` |
 | 換 Firebase 專案 | `js/config.js` |
 | 改卡片或詳情面板長相 | `js/ui.js` |
 | 改側欄寬度 | `css/style.css` 的 `--side-w` |
@@ -124,6 +127,18 @@ users/{uid}
 
 ---
 
+## 背卡圖鑑
+
+側欄「檢視」可切換寶可夢圖鑑與背卡圖鑑。背卡圖鑑分三層：
+活動列表 → 該活動的背卡 → 該背卡的寶可夢方格（點一下切換有／沒有）。
+
+新增一個活動：在 `js/backgrounds.js` 的 `EVENTS` 加一筆，
+圖片放進 `img/bg/`，檔名要跟 `card.img` 一致。
+
+`scope` 分兩種：`global`（全球活動）與 `regional`（地區限定，顯示為粉紅標籤）。
+
+主畫面卡片右上角第四個藍點代表「至少有一張背卡」。
+
 ## 版面
 
 - **頂部列**：漢堡鈕、置中標題、深色模式、搜尋框
@@ -135,6 +150,7 @@ users/{uid}
 
 - XXS 尚未實際盤點，預設全部未取得
 - CP 目前只能看不能在畫面上編輯
-- 地區背景欄位尚未實作
 - 手機版側欄僅做基本覆蓋，細節尚未打磨
+- 目前只有 GO Fest 2026 一個活動，地區限定背卡尚未加入
+- 背卡圖片需自行放入 `img/bg/`，未放置時會顯示破圖
 - Firestore 免費額度為每日 5 萬次讀取，使用者變多時要留意

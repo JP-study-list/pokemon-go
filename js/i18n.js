@@ -63,6 +63,14 @@ export const STRINGS = {
     sideLang: "語言",
     sideStats: "收集狀態",
     sideFilter: "篩選",
+    sideView: "檢視",
+    viewDex: "寶可夢圖鑑",
+    viewBg: "背卡圖鑑",
+    filterBg: "缺背卡",
+    bgSection: "活動背卡",
+    bgAllEvents: "所有活動",
+    bgGlobal: "全球",
+    bgRegional: "地區限定",
   },
 
   ja: {
@@ -108,6 +116,14 @@ export const STRINGS = {
     sideLang: "言語",
     sideStats: "収集状況",
     sideFilter: "絞り込み",
+    sideView: "表示",
+    viewDex: "ポケモン図鑑",
+    viewBg: "背景コレクション",
+    filterBg: "背景未取得",
+    bgSection: "イベント背景",
+    bgAllEvents: "すべてのイベント",
+    bgGlobal: "グローバル",
+    bgRegional: "地域限定",
   },
 
   en: {
@@ -153,6 +169,14 @@ export const STRINGS = {
     sideLang: "Language",
     sideStats: "Collection",
     sideFilter: "Filter",
+    sideView: "View",
+    viewDex: "Pokédex",
+    viewBg: "Backgrounds",
+    filterBg: "Background missing",
+    bgSection: "Event backgrounds",
+    bgAllEvents: "All events",
+    bgGlobal: "Global",
+    bgRegional: "Regional",
   },
 };
 

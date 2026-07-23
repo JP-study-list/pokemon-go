@@ -19,6 +19,9 @@ const state = {
   filter: "all",
   query: "",
   openId: null,
+  // 背卡圖鑑的導覽狀態：level 為 events / cards / cardDetail
+  view: "dex",
+  nav: { level: "events", eventId: null, cardId: null },
 };
 
 let t = makeT(state.lang);
@@ -26,9 +29,21 @@ let t = makeT(state.lang);
 /* ─────────── 繪製 ─────────── */
 
 function draw() {
-  const shown = ui.applyFilter(state.list, state.filter, state.query);
   ui.renderStats(state.list);
   ui.renderFilterCounts(state.list);
+  ui.setView(state.view, t);
+
+  if (state.view === "bg") {
+    // 背卡圖鑑自己有麵包屑導覽，訪客提示由各層自行處理
+    ui.renderGuestNotice(false, t);
+    const n = state.nav;
+    if (n.level === "cardDetail") ui.renderCardDetail(n.cardId, state.list, state.lang, t, !!state.user);
+    else if (n.level === "cards") ui.renderCardList(n.eventId, state.list, state.lang, t);
+    else ui.renderEventList(state.list, state.lang, t);
+    return;
+  }
+
+  const shown = ui.applyFilter(state.list, state.filter, state.query);
   ui.renderGrid(shown, state.lang, t);
   ui.renderGuestNotice(!state.user, t);
 }
@@ -61,6 +76,23 @@ function toggleField(key) {
 
   drawDetail();
   draw();
+  saveUser(state.user.uid, state.list, (status) =>
+    ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
+  );
+}
+
+/** 切換某隻寶可夢在某張背卡上的擁有狀態 */
+function toggleBg(pokemonId, cardId) {
+  if (!state.user) return;
+  const p = state.list.find((x) => x.id === pokemonId);
+  if (!p) return;
+  p.bg = p.bg || [];
+  const i = p.bg.indexOf(cardId);
+  if (i >= 0) p.bg.splice(i, 1);
+  else p.bg.push(cardId);
+
+  draw();
+  if (ui.isSheetOpen()) drawDetail();
   saveUser(state.user.uid, state.list, (status) =>
     ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
   );
@@ -103,11 +135,57 @@ function setSidebar(open) {
 /* ─────────── 事件 ─────────── */
 
 document.addEventListener("click", async (e) => {
+  // 背卡圖鑑第三層的方格：點一下即切換擁有狀態
+  const bgCell = e.target.closest(".bgcell");
+  if (bgCell) {
+    if (!bgCell.disabled) toggleBg(bgCell.dataset.id, bgCell.dataset.bgtoggle);
+    return;
+  }
+
+  const evCard = e.target.closest(".ev-card");
+  if (evCard) {
+    state.nav = { level: "cards", eventId: evCard.dataset.event, cardId: null };
+    draw();
+    return;
+  }
+
+  const bgItem = e.target.closest(".bg-card-item");
+  if (bgItem) {
+    state.nav = { ...state.nav, level: "cardDetail", cardId: bgItem.dataset.card };
+    draw();
+    return;
+  }
+
+  const crumb = e.target.closest(".crumb");
+  if (crumb) {
+    state.nav =
+      crumb.dataset.back === "events"
+        ? { level: "events", eventId: null, cardId: null }
+        : { level: "cards", eventId: crumb.dataset.event, cardId: null };
+    draw();
+    return;
+  }
+
+  const viewBtn = e.target.closest("#views button");
+  if (viewBtn) {
+    state.view = viewBtn.dataset.view;
+    if (state.view === "bg") state.nav = { level: "events", eventId: null, cardId: null };
+    draw();
+    if (isNarrow()) setSidebar(false);
+    return;
+  }
+
   const cell = e.target.closest(".cell");
   if (cell) {
     state.openId = cell.dataset.id;
     drawDetail();
     ui.openSheet();
+    return;
+  }
+
+  const bgTog = e.target.closest(".tog-bg");
+  if (bgTog && !bgTog.disabled) {
+    toggleBg(state.openId, bgTog.dataset.bgcard);
     return;
   }
 
@@ -260,6 +338,7 @@ function boot() {
   } catch (_) {}
 
   ui.buildLangSwitch(LANGS, state.lang);
+  ui.buildViewSwitch();
   ui.buildFilterBar();
   ui.renderChrome(state.lang, t);
   ui.renderAuth(null, t);

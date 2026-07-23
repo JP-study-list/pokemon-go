@@ -10,6 +10,7 @@
  * ── Firestore 結構 ──
  * users/{uid}
  *   states: { p000: {xxl, xxs, iv100:{has,shiny,lucky}}, p001: {...} }
+ *   bg:     { "gf26-global": ["p003","p016"], ... }   背卡：卡片 → 擁有的寶可夢
  *   updated: 時間戳
  */
 
@@ -22,9 +23,20 @@ import { db } from "./auth.js";
 import { COLLECTION, SAVE_DELAY } from "./config.js";
 import { POKEMON, blankState } from "./data.js";
 
-/** 把 Firestore 讀到的狀態套到基礎資料上，產生畫面要用的完整列表 */
-export function buildList(states) {
+/**
+ * 把 Firestore 讀到的狀態套到基礎資料上，產生畫面要用的完整列表
+ * @param {object} states 收集狀態
+ * @param {object} bg 背卡紀錄 { cardId: [pokemonId, ...] }
+ */
+export function buildList(states, bg) {
   const saved = states || {};
+  const cards = bg || {};
+  // 反查：pokemonId -> [cardId]，避免每張卡都掃一次陣列
+  const owned = Object.create(null);
+  for (const [cardId, list] of Object.entries(cards)) {
+    if (!Array.isArray(list)) continue;
+    for (const pid of list) (owned[pid] ||= []).push(cardId);
+  }
   return POKEMON.map((p) => {
     const s = saved[p.id];
     const base = blankState();
@@ -37,6 +49,7 @@ export function buildList(states) {
         shiny: !!(s && s.iv100 && s.iv100.shiny),
         lucky: !!(s && s.iv100 && s.iv100.lucky),
       },
+      bg: owned[p.id] || [],
     };
   });
 }
@@ -56,18 +69,25 @@ function extractStates(list) {
   return out;
 }
 
-/**
- * 讀取某位使用者的紀錄
- * @returns {Promise<Array>} 完整列表
- */
+/** 背卡紀錄以「卡片 → 擁有的寶可夢」儲存，只存有的 */
+function extractBg(list) {
+  const out = {};
+  for (const p of list) {
+    for (const cardId of p.bg || []) (out[cardId] ||= []).push(p.id);
+  }
+  return out;
+}
+
+/** 讀取某位使用者的紀錄 */
 export async function loadUser(uid) {
   const snap = await getDoc(doc(db, COLLECTION, uid));
-  return buildList(snap.exists() ? snap.data().states : null);
+  const d = snap.exists() ? snap.data() : null;
+  return buildList(d ? d.states : null, d ? d.bg : null);
 }
 
 /** 未登入時顯示的唯讀列表 */
 export function guestList() {
-  return buildList(null);
+  return buildList(null, null);
 }
 
 let timer = null;
@@ -88,6 +108,7 @@ export function saveUser(uid, list, onDone) {
     try {
       await setDoc(doc(db, COLLECTION, job.uid), {
         states: extractStates(job.list),
+        bg: extractBg(job.list),
         updated: Date.now(),
       });
       onDone("saved");
@@ -107,6 +128,7 @@ export async function flush() {
   try {
     await setDoc(doc(db, COLLECTION, job.uid), {
       states: extractStates(job.list),
+      bg: extractBg(job.list),
       updated: Date.now(),
     });
   } catch (err) {

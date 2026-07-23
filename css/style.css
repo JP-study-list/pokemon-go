@@ -22,6 +22,7 @@
   --iv: #c8892a;
   --shiny: #c94f7c;
   --lucky: #d4a017;
+  --bg-card: #4a7fb5;
 
   /* 尺寸 */
   --radius: 10px;
@@ -41,6 +42,7 @@ body.dark {
   --iv: #e0a94a;
   --shiny: #e87ba3;
   --lucky: #e8bf45;
+  --bg-card: #6fa8dc;
 }
 
 * {
@@ -830,4 +832,290 @@ input:focus-visible {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ─────────── 檢視切換 ─────────── */
+
+.views {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.views button {
+  height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.views button:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.views button.is-on {
+  background: var(--gold);
+  color: #fff;
+}
+
+/* ─────────── 背卡：活動列表 ─────────── */
+
+.ev-card {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.ev-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.ev-covers {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.ev-covers img {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.ev-covers img + img {
+  margin-left: -18px;
+}
+
+.ev-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ev-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ev-date {
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+.ev-prog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ev-prog .bar {
+  flex: 1;
+  max-width: 220px;
+}
+
+.ev-n {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 13px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* ─────────── 背卡：卡片列表 ─────────── */
+
+.crumb {
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 6px;
+}
+
+.crumb:hover {
+  color: var(--gold);
+}
+
+.bg-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bg-card-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.bg-card-item:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.bg-card-item > img {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.bg-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bg-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.bg-title em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 9px;
+}
+
+.scope-global {
+  background: var(--line);
+  color: var(--dim);
+}
+
+.scope-regional {
+  background: var(--shiny);
+  color: #fff;
+}
+
+.bg-note {
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.55;
+}
+
+/* ─────────── 背卡：明細頁 ─────────── */
+
+.bg-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 6px 0 16px;
+}
+
+.bg-head img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.bg-head h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.bg-count {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 19px;
+  color: var(--bg-card);
+  letter-spacing: 0.04em;
+  margin-top: 5px;
+}
+
+.bgcell.is-owned {
+  border-color: var(--bg-card);
+  box-shadow: inset 0 0 0 1px var(--bg-card);
+}
+
+.bgcell:disabled {
+  cursor: default;
+}
+
+.bgcell:disabled:hover {
+  transform: none;
+  border-color: var(--line);
+}
+
+/* ─────────── 詳情面板的背卡開關 ─────────── */
+
+.tog-bg {
+  gap: 11px;
+}
+
+.bg-thumb {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.bg-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bg-name {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.bg-ev {
+  font-size: 11px;
+  color: var(--dim);
+  font-weight: 400;
 }

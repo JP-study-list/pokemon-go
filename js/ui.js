@@ -12,6 +12,7 @@
 
 import { artUrl } from "./data.js";
 import { typeInfo } from "./types.js";
+import { EVENTS, allCards, cardsFor } from "./backgrounds.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -21,6 +22,7 @@ export const FILTERS = [
   { id: "xxl", label: "filterXxl" },
   { id: "xxs", label: "filterXxs" },
   { id: "iv", label: "filterIv" },
+  { id: "bg", label: "filterBg" },
   { id: "got", label: "filterGot" },
 ];
 
@@ -43,8 +45,10 @@ export function applyFilter(list, filterId, query) {
         return !p.xxs;
       case "iv":
         return !p.iv100.has;
+      case "bg":
+        return cardsFor(p.id).length > 0 && !(p.bg || []).length;
       case "got":
-        return p.xxl || p.xxs || p.iv100.has;
+        return p.xxl || p.xxs || p.iv100.has || (p.bg || []).length > 0;
       default:
         return true;
     }
@@ -66,6 +70,7 @@ export function renderStats(list) {
     ["XXL", list.filter((p) => p.xxl).length, "var(--xxl)"],
     ["XXS", list.filter((p) => p.xxs).length, "var(--xxs)"],
     ["IV100", list.filter((p) => p.iv100.has).length, "var(--iv)"],
+    ["BG", list.filter((p) => (p.bg || []).length > 0).length, "var(--bg-card)"],
   ];
   $("#stats").innerHTML = rows
     .map(
@@ -82,14 +87,14 @@ export function renderStats(list) {
 /* ─────────── 卡片牆 ─────────── */
 
 function renderCard(p, lang) {
-  const empty = !p.xxl && !p.xxs && !p.iv100.has;
+  const empty = !p.xxl && !p.xxs && !p.iv100.has && !(p.bg || []).length;
   const pip = (on, color) =>
     on ? `<i class="pip" style="background:${color}"></i>` : "";
   const cp = (v) => (v == null ? "—" : v);
   return `
     <button class="cell${empty ? " is-empty" : ""}" data-id="${p.id}" type="button">
       <span class="pips">
-        ${pip(p.xxl, "var(--xxl)")}${pip(p.xxs, "var(--xxs)")}${pip(p.iv100.has, "var(--iv)")}
+        ${pip(p.xxl, "var(--xxl)")}${pip(p.xxs, "var(--xxs)")}${pip(p.iv100.has, "var(--iv)")}${pip((p.bg || []).length > 0, "var(--bg-card)")}
       </span>
       <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
       <span class="nm">${esc(p[lang])}</span>
@@ -144,6 +149,30 @@ export function renderDetail(p, lang, t, canEdit) {
     })
     .join("");
 
+  const myCards = cardsFor(p.id);
+  const bgOwned = new Set(p.bg || []);
+  const bgSection = myCards.length
+    ? `
+    <p class="d-sect">${t("bgSection")}</p>
+    <div class="togs">
+      ${myCards
+        .map(
+          ({ event, card }) => `
+        <button class="tog tog-bg" type="button" data-bgcard="${card.id}"
+                data-on="${bgOwned.has(card.id) ? 1 : 0}" style="--tog:var(--bg-card)"
+                ${canEdit ? "" : "disabled"}>
+          <img class="bg-thumb" src="${card.img}" alt="" loading="lazy">
+          <span class="bg-meta">
+            <span class="bg-name">${esc(card[lang] || card.en)}</span>
+            <span class="bg-ev">${esc(event[lang] || event.en)}</span>
+          </span>
+          <span class="sw" aria-hidden="true"></span>
+        </button>`
+        )
+        .join("")}
+    </div>`
+    : "";
+
   $("#panel").innerHTML = `
     <div class="d-top">
       <img src="${artUrl(p.art)}" alt="" decoding="async">
@@ -169,6 +198,7 @@ export function renderDetail(p, lang, t, canEdit) {
         ${toggle("lucky", t("lucky"), p.iv100.lucky, "var(--lucky)")}
       </div>
     </div>
+    ${bgSection}
 
     <button class="btn-close" type="button" id="closeDetail">${t("close")}</button>`;
 }
@@ -219,6 +249,7 @@ export function renderChrome(lang, t) {
   $("#q").placeholder = t("search");
   $("#themeBtn").title = t("tipTheme");
   $("#menuBtn").title = t("tipMenu");
+  $("#viewTitle").textContent = t("sideView");
   $("#langTitle").textContent = t("sideLang");
   $("#statsTitle").textContent = t("sideStats");
   $("#filterTitle").textContent = t("sideFilter");
@@ -282,4 +313,130 @@ export function toast(text) {
 
 export function setBusy(on) {
   $("#app").setAttribute("aria-busy", on ? "true" : "false");
+}
+
+/* ─────────── 背卡圖鑑 ─────────── */
+
+/** 層級 1：活動列表 */
+export function renderEventList(list, lang, t) {
+  const byId = Object.create(null);
+  for (const p of list) byId[p.id] = p;
+
+  $("#list").innerHTML = EVENTS.map((ev) => {
+    const slots = ev.cards.reduce((n, c) => n + c.pokemon.length, 0);
+    const got = ev.cards.reduce(
+      (n, c) => n + c.pokemon.filter((id) => (byId[id]?.bg || []).includes(c.id)).length,
+      0
+    );
+    const covers = ev.cards
+      .map((c) => `<img src="${c.img}" alt="" loading="lazy">`)
+      .join("");
+    return `
+      <button class="ev-card" type="button" data-event="${ev.id}">
+        <span class="ev-covers">${covers}</span>
+        <span class="ev-body">
+          <span class="ev-name">${esc(ev[lang] || ev.en)}</span>
+          <span class="ev-date">${esc(ev.date)}</span>
+          <span class="ev-prog">
+            <span class="bar"><i style="width:${slots ? (got / slots) * 100 : 0}%;background:var(--bg-card)"></i></span>
+            <span class="ev-n">${got}/${slots}</span>
+          </span>
+        </span>
+      </button>`;
+  }).join("");
+}
+
+/** 層級 2：某活動底下的背卡 */
+export function renderCardList(eventId, list, lang, t) {
+  const ev = EVENTS.find((e) => e.id === eventId);
+  if (!ev) return;
+  const byId = Object.create(null);
+  for (const p of list) byId[p.id] = p;
+
+  $("#list").innerHTML = `
+    <button class="crumb" type="button" data-back="events">← ${t("bgAllEvents")}</button>
+    <h2 class="gen-head">${esc(ev[lang] || ev.en)}<span>${esc(ev.date)}</span></h2>
+    <div class="bg-cards">
+      ${ev.cards
+        .map((c) => {
+          const got = c.pokemon.filter((id) => (byId[id]?.bg || []).includes(c.id)).length;
+          const note = c[`note_${lang}`] || c.note_en || "";
+          return `
+        <button class="bg-card-item" type="button" data-card="${c.id}">
+          <img src="${c.img}" alt="" loading="lazy">
+          <span class="bg-info">
+            <span class="bg-title">${esc(c[lang] || c.en)}
+              <em class="scope-${c.scope}">${t(c.scope === "regional" ? "bgRegional" : "bgGlobal")}</em>
+            </span>
+            <span class="bg-note">${esc(note)}</span>
+            <span class="ev-prog">
+              <span class="bar"><i style="width:${c.pokemon.length ? (got / c.pokemon.length) * 100 : 0}%;background:var(--bg-card)"></i></span>
+              <span class="ev-n">${got}/${c.pokemon.length}</span>
+            </span>
+          </span>
+        </button>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+/** 層級 3：某張背卡的寶可夢方格牆 */
+export function renderCardDetail(cardId, list, lang, t, canEdit) {
+  const found = allCards().find(({ card }) => card.id === cardId);
+  if (!found) return;
+  const { event, card } = found;
+  const byId = Object.create(null);
+  for (const p of list) byId[p.id] = p;
+
+  const items = card.pokemon.map((id) => byId[id]).filter(Boolean);
+  const got = items.filter((p) => (p.bg || []).includes(card.id)).length;
+
+  $("#list").innerHTML = `
+    <button class="crumb" type="button" data-back="cards" data-event="${event.id}">← ${esc(event[lang] || event.en)}</button>
+    <div class="bg-head">
+      <img src="${card.img}" alt="">
+      <div>
+        <h2>${esc(card[lang] || card.en)}</h2>
+        <p class="bg-note">${esc(card[`note_${lang}`] || card.note_en || "")}</p>
+        <p class="bg-count">${got} / ${items.length}</p>
+      </div>
+    </div>
+    ${canEdit ? "" : `<p class="guest-notice">${t("guestNotice")}</p>`}
+    <div class="grid">
+      ${items
+        .map((p) => {
+          const owned = (p.bg || []).includes(card.id);
+          return `
+        <button class="cell bgcell${owned ? " is-owned" : " is-empty"}" type="button"
+                data-bgtoggle="${card.id}" data-id="${p.id}" ${canEdit ? "" : "disabled"}>
+          <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
+          <span class="nm">${esc(p[lang])}</span>
+          <span class="dex">${dexNo(p.no)}</span>
+        </button>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+/** 檢視切換（寶可夢圖鑑 / 背卡圖鑑） */
+export function buildViewSwitch() {
+  $("#views").innerHTML = `
+    <button type="button" data-view="dex" class="is-on"></button>
+    <button type="button" data-view="bg"></button>`;
+}
+
+/**
+ * 套用目前的檢視：切換按鈕高亮，並隱藏背卡圖鑑用不到的控制項
+ */
+export function setView(view, t) {
+  document.querySelectorAll("#views button").forEach((b) => {
+    const on = b.dataset.view === view;
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.textContent = t(b.dataset.view === "dex" ? "viewDex" : "viewBg");
+  });
+  // 搜尋與篩選只對寶可夢圖鑑有意義
+  const dex = view === "dex";
+  $("#q").hidden = !dex;
+  $("#filterBlock").hidden = !dex;
 }

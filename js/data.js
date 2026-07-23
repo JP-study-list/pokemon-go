@@ -86,7 +86,18 @@ export const POKEMON = [
   { id:"p064", no:892, art:10191, gen:8, zh:"熊徒弟(連擊)", ja:"ウーラオス(れんげきのかた)", en:"Urshifu (Rapid Strike)", cp20:2109, cp25:2637, types:["fighting","water"] },
   { id:"p065", no:894, art:894, gen:8, zh:"雷吉艾勒奇", ja:"レジエレキ", en:"Regieleki", cp20:1602, cp25:2002, types:["electric"] },
   { id:"p066", no:895, art:895, gen:8, zh:"雷吉鐸拉戈", ja:"レジドラゴ", en:"Regidrago", cp20:1699, cp25:2124, types:["dragon"] },
-  { id:"p067", no:905, art:905, gen:9, zh:"眷戀雲", ja:"ラブトロス", en:"Enamorus", cp20:1957, cp25:2447, types:["fairy","flying"] },
+  { id:"p067", no:905, art:905, gen:9, zh:"眷戀雲(化身)", ja:"ラブトロス(けしんフォルム)", en:"Enamorus (Incarnate)", cp20:1957, cp25:2447, types:["fairy","flying"] },
+  { id:"p068", no:905, art:10250, gen:9, zh:"眷戀雲(靈獸)", ja:"ラブトロス(れいじゅうフォルム)", en:"Enamorus (Therian)", cp20:1935, cp25:2420, types:["fairy","flying"] },
+  { id:"p069", no:386, art:386, gen:3, zh:"代歐奇希斯", ja:"デオキシス", en:"Deoxys", cp20:1806, cp25:2257, types:["psychic"] },
+  { id:"p070", no:386, art:10001, gen:3, zh:"代歐奇希斯(攻擊)", ja:"デオキシス(アタックフォルム)", en:"Deoxys (Attack)", cp20:1474, cp25:1842, types:["psychic"] },
+  { id:"p071", no:386, art:10002, gen:3, zh:"代歐奇希斯(防禦)", ja:"デオキシス(ディフェンスフォルム)", en:"Deoxys (Defense)", cp20:1299, cp25:1624, types:["psychic"] },
+  { id:"p072", no:386, art:10003, gen:3, zh:"代歐奇希斯(速度)", ja:"デオキシス(スピードフォルム)", en:"Deoxys (Speed)", cp20:1645, cp25:2056, types:["psychic"] },
+  { id:"p073", no:491, art:491, gen:4, zh:"達克萊伊", ja:"ダークライ", en:"Darkrai", cp20:2136, cp25:2671, types:["dark"] },
+  { id:"p074", no:649, art:649, gen:5, zh:"蓋諾賽克特", ja:"ゲノセクト", en:"Genesect", cp20:1916, cp25:2395, types:["bug","steel"] },
+  { id:"p075", no:649, art:10028, gen:5, zh:"蓋諾賽克特(火焰卡帶)", ja:"ゲノセクト(バーンカセット)", en:"Genesect (Burn)", cp20:1916, cp25:2395, types:["bug","steel"] },
+  { id:"p076", no:649, art:10029, gen:5, zh:"蓋諾賽克特(冰凍卡帶)", ja:"ゲノセクト(シャインカセット)", en:"Genesect (Chill)", cp20:1916, cp25:2395, types:["bug","steel"] },
+  { id:"p077", no:649, art:10030, gen:5, zh:"蓋諾賽克特(水流卡帶)", ja:"ゲノセクト(アクアカセット)", en:"Genesect (Douse)", cp20:1916, cp25:2395, types:["bug","steel"] },
+  { id:"p078", no:649, art:10031, gen:5, zh:"蓋諾賽克特(閃電卡帶)", ja:"ゲノセクト(ブレイズカセット)", en:"Genesect (Shock)", cp20:1916, cp25:2395, types:["bug","steel"] },
 ];
 
 /** 圖片網址（PokeAPI 官方立繪 CDN） */
