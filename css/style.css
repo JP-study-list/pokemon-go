@@ -1,5 +1,5 @@
 /**
- * style.css
+ * style.css 
  *
  * 設計 token 全部集中在 :root，改配色只要動這一段。
  * 深色模式用 body.dark 覆寫同一組變數。
