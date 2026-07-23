@@ -10,8 +10,12 @@
  * ── Firestore 結構 ──
  * users/{uid}
  *   states: { p000: {xxl, xxs, iv100:{has,shiny,lucky}}, p001: {...} }
- *   bg:     { "gf26-global": ["p003","p016"], ... }   背卡：卡片 → 擁有的寶可夢
+ *   bg:     { "gf26-global": ["p003","d131"], ... }   背卡：卡片 → 已取得的項目
  *   updated: 時間戳
+ *
+ * 背卡的項目鍵有兩種：
+ *   "p003"  圖鑑（data.js）裡的傳說
+ *   "d131"  一般寶可夢，d 後面接全國圖鑑編號
  */
 
 import {
@@ -31,11 +35,11 @@ import { POKEMON, blankState } from "./data.js";
 export function buildList(states, bg) {
   const saved = states || {};
   const cards = bg || {};
-  // 反查：pokemonId -> [cardId]，避免每張卡都掃一次陣列
+  // 反查：項目鍵 -> [cardId]，避免每張卡都掃一次陣列
   const owned = Object.create(null);
   for (const [cardId, list] of Object.entries(cards)) {
     if (!Array.isArray(list)) continue;
-    for (const pid of list) (owned[pid] ||= []).push(cardId);
+    for (const key of list) (owned[key] ||= []).push(cardId);
   }
   return POKEMON.map((p) => {
     const s = saved[p.id];
@@ -69,25 +73,54 @@ function extractStates(list) {
   return out;
 }
 
-/** 背卡紀錄以「卡片 → 擁有的寶可夢」儲存，只存有的 */
-function extractBg(list) {
+/**
+ * 背卡紀錄以「卡片 → 已取得的項目」儲存，只存有的。
+ *
+ * 傳說（p###）的狀態掛在 list 上，一般寶可夢（d###）不在 list 裡，
+ * 所以額外用 extraBg 帶進來，兩者合併後再寫回。
+ */
+function extractBg(list, extraBg) {
   const out = {};
   for (const p of list) {
     for (const cardId of p.bg || []) (out[cardId] ||= []).push(p.id);
   }
+  for (const [cardId, keys] of Object.entries(extraBg || {})) {
+    if (!Array.isArray(keys)) continue;
+    for (const k of keys) {
+      const arr = (out[cardId] ||= []);
+      if (!arr.includes(k)) arr.push(k);
+    }
+  }
+  // 移除空陣列，保持文件精簡
+  for (const k of Object.keys(out)) if (!out[k].length) delete out[k];
   return out;
 }
 
-/** 讀取某位使用者的紀錄 */
+/** 從 Firestore 讀到的 bg 中，抽出不屬於圖鑑 79 隻的項目（d### 開頭） */
+export function extractNonDexBg(bg) {
+  const out = {};
+  for (const [cardId, keys] of Object.entries(bg || {})) {
+    if (!Array.isArray(keys)) continue;
+    const rest = keys.filter((k) => typeof k === "string" && k.startsWith("d"));
+    if (rest.length) out[cardId] = rest;
+  }
+  return out;
+}
+
+/**
+ * 讀取某位使用者的紀錄
+ * @returns {Promise<{list: Array, extraBg: object}>}
+ */
 export async function loadUser(uid) {
   const snap = await getDoc(doc(db, COLLECTION, uid));
   const d = snap.exists() ? snap.data() : null;
-  return buildList(d ? d.states : null, d ? d.bg : null);
+  const bg = d ? d.bg : null;
+  return { list: buildList(d ? d.states : null, bg), extraBg: extractNonDexBg(bg) };
 }
 
 /** 未登入時顯示的唯讀列表 */
 export function guestList() {
-  return buildList(null, null);
+  return { list: buildList(null, null), extraBg: {} };
 }
 
 let timer = null;
@@ -97,10 +130,11 @@ let pending = null;
  * 儲存（延遲寫入，連續操作只送一次）
  * @param {string} uid
  * @param {Array} list
+ * @param {object} extraBg 不在圖鑑內的背卡紀錄
  * @param {(status: "saved"|"failed") => void} onDone
  */
-export function saveUser(uid, list, onDone) {
-  pending = { uid, list };
+export function saveUser(uid, list, extraBg, onDone) {
+  pending = { uid, list, extraBg };
   clearTimeout(timer);
   timer = setTimeout(async () => {
     const job = pending;
@@ -108,7 +142,7 @@ export function saveUser(uid, list, onDone) {
     try {
       await setDoc(doc(db, COLLECTION, job.uid), {
         states: extractStates(job.list),
-        bg: extractBg(job.list),
+        bg: extractBg(job.list, job.extraBg),
         updated: Date.now(),
       });
       onDone("saved");
@@ -128,7 +162,7 @@ export async function flush() {
   try {
     await setDoc(doc(db, COLLECTION, job.uid), {
       states: extractStates(job.list),
-      bg: extractBg(job.list),
+      bg: extractBg(job.list, job.extraBg),
       updated: Date.now(),
     });
   } catch (err) {

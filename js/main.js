@@ -12,16 +12,20 @@ import * as ui from "./ui.js";
 
 const $ = (sel) => document.querySelector(sel);
 
+const guest = guestList();
+
 const state = {
   user: null,
-  list: guestList(),
+  list: guest.list,
+  // 不在圖鑑 79 隻內的背卡紀錄 { cardId: ["d131", ...] }
+  extraBg: guest.extraBg,
   lang: DEFAULT_LANG,
   filter: "all",
   query: "",
   openId: null,
-  // 背卡圖鑑的導覽狀態：level 為 events / cards / cardDetail
+  // 背卡圖鑑的導覽狀態：level 為 grid（背卡總覽）或 cardDetail（單張背卡）
   view: "dex",
-  nav: { level: "events", eventId: null, cardId: null },
+  nav: { level: "grid", cardId: null },
 };
 
 let t = makeT(state.lang);
@@ -36,10 +40,11 @@ function draw() {
   if (state.view === "bg") {
     // 背卡圖鑑自己有麵包屑導覽，訪客提示由各層自行處理
     ui.renderGuestNotice(false, t);
-    const n = state.nav;
-    if (n.level === "cardDetail") ui.renderCardDetail(n.cardId, state.list, state.lang, t, !!state.user);
-    else if (n.level === "cards") ui.renderCardList(n.eventId, state.list, state.lang, t);
-    else ui.renderEventList(state.list, state.lang, t);
+    if (state.nav.level === "cardDetail") {
+      ui.renderCardDetail(state.nav.cardId, state.list, state.extraBg, state.lang, t, !!state.user);
+    } else {
+      ui.renderCardGrid(state.list, state.extraBg, state.lang, t);
+    }
     return;
   }
 
@@ -76,24 +81,39 @@ function toggleField(key) {
 
   drawDetail();
   draw();
-  saveUser(state.user.uid, state.list, (status) =>
-    ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
-  );
+  save();
 }
 
-/** 切換某隻寶可夢在某張背卡上的擁有狀態 */
-function toggleBg(pokemonId, cardId) {
+/**
+ * 切換某個項目在某張背卡上的擁有狀態。
+ * entryKey 是 "p003"（圖鑑內傳說）或 "d131"（一般寶可夢）。
+ */
+function toggleBg(entryKey, cardId) {
   if (!state.user) return;
-  const p = state.list.find((x) => x.id === pokemonId);
-  if (!p) return;
-  p.bg = p.bg || [];
-  const i = p.bg.indexOf(cardId);
-  if (i >= 0) p.bg.splice(i, 1);
-  else p.bg.push(cardId);
+
+  if (entryKey.startsWith("p")) {
+    const p = state.list.find((x) => x.id === entryKey);
+    if (!p) return;
+    p.bg = p.bg || [];
+    const i = p.bg.indexOf(cardId);
+    if (i >= 0) p.bg.splice(i, 1);
+    else p.bg.push(cardId);
+  } else {
+    const arr = (state.extraBg[cardId] ||= []);
+    const i = arr.indexOf(entryKey);
+    if (i >= 0) arr.splice(i, 1);
+    else arr.push(entryKey);
+    if (!arr.length) delete state.extraBg[cardId];
+  }
 
   draw();
   if (ui.isSheetOpen()) drawDetail();
-  saveUser(state.user.uid, state.list, (status) =>
+  save();
+}
+
+/** 統一的存檔入口，確保 extraBg 一起送出 */
+function save() {
+  saveUser(state.user.uid, state.list, state.extraBg, (status) =>
     ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
   );
 }
@@ -138,30 +158,21 @@ document.addEventListener("click", async (e) => {
   // 背卡圖鑑第三層的方格：點一下即切換擁有狀態
   const bgCell = e.target.closest(".bgcell");
   if (bgCell) {
-    if (!bgCell.disabled) toggleBg(bgCell.dataset.id, bgCell.dataset.bgtoggle);
+    if (!bgCell.disabled) toggleBg(bgCell.dataset.entry, bgCell.dataset.bgtoggle);
     return;
   }
 
-  const evCard = e.target.closest(".ev-card");
-  if (evCard) {
-    state.nav = { level: "cards", eventId: evCard.dataset.event, cardId: null };
+  const tile = e.target.closest(".bg-tile");
+  if (tile) {
+    state.nav = { level: "cardDetail", cardId: tile.dataset.card };
     draw();
-    return;
-  }
-
-  const bgItem = e.target.closest(".bg-card-item");
-  if (bgItem) {
-    state.nav = { ...state.nav, level: "cardDetail", cardId: bgItem.dataset.card };
-    draw();
+    window.scrollTo(0, 0);
     return;
   }
 
   const crumb = e.target.closest(".crumb");
   if (crumb) {
-    state.nav =
-      crumb.dataset.back === "events"
-        ? { level: "events", eventId: null, cardId: null }
-        : { level: "cards", eventId: crumb.dataset.event, cardId: null };
+    state.nav = { level: "grid", cardId: null };
     draw();
     return;
   }
@@ -169,7 +180,7 @@ document.addEventListener("click", async (e) => {
   const viewBtn = e.target.closest("#views button");
   if (viewBtn) {
     state.view = viewBtn.dataset.view;
-    if (state.view === "bg") state.nav = { level: "events", eventId: null, cardId: null };
+    if (state.view === "bg") state.nav = { level: "grid", cardId: null };
     draw();
     if (isNarrow()) setSidebar(false);
     return;
@@ -300,25 +311,28 @@ watchAuth(async (user) => {
   ui.renderAuth(user, t);
 
   if (!user) {
-    state.list = guestList();
+    const g = guestList();
+    state.list = g.list;
+    state.extraBg = g.extraBg;
     ui.closeSheet();
     draw();
     return;
   }
 
   ui.setBusy(true);
-  let list;
+  let loaded;
   try {
-    list = await loadUser(user.uid);
+    loaded = await loadUser(user.uid);
   } catch (err) {
     console.error("[main] load failed:", err);
     if (seq === authSeq) ui.toast(t("loadFailed"));
-    list = guestList();
+    loaded = guestList();
   }
   ui.setBusy(false);
   if (seq !== authSeq) return; // 已經有更新的登入事件，丟棄這次結果
 
-  state.list = list;
+  state.list = loaded.list;
+  state.extraBg = loaded.extraBg;
   draw();
   if (ui.isSheetOpen()) drawDetail();
 });

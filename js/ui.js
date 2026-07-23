@@ -12,7 +12,8 @@
 
 import { artUrl } from "./data.js";
 import { typeInfo } from "./types.js";
-import { EVENTS, allCards, cardsFor } from "./backgrounds.js";
+import { allCards, cardsFor, entriesOf } from "./backgrounds.js";
+import { lookup } from "./pokedex.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -317,61 +318,27 @@ export function setBusy(on) {
 
 /* ─────────── 背卡圖鑑 ─────────── */
 
-/** 層級 1：活動列表 */
-export function renderEventList(list, lang, t) {
-  const byId = Object.create(null);
-  for (const p of list) byId[p.id] = p;
-
-  $("#list").innerHTML = EVENTS.map((ev) => {
-    const slots = ev.cards.reduce((n, c) => n + c.pokemon.length, 0);
-    const got = ev.cards.reduce(
-      (n, c) => n + c.pokemon.filter((id) => (byId[id]?.bg || []).includes(c.id)).length,
-      0
-    );
-    const covers = ev.cards
-      .map((c) => `<img src="${c.img}" alt="" loading="lazy">`)
-      .join("");
-    return `
-      <button class="ev-card" type="button" data-event="${ev.id}">
-        <span class="ev-covers">${covers}</span>
-        <span class="ev-body">
-          <span class="ev-name">${esc(ev[lang] || ev.en)}</span>
-          <span class="ev-date">${esc(ev.date)}</span>
-          <span class="ev-prog">
-            <span class="bar"><i style="width:${slots ? (got / slots) * 100 : 0}%;background:var(--bg-card)"></i></span>
-            <span class="ev-n">${got}/${slots}</span>
-          </span>
-        </span>
-      </button>`;
-  }).join("");
-}
-
-/** 層級 2：某活動底下的背卡 */
-export function renderCardList(eventId, list, lang, t) {
-  const ev = EVENTS.find((e) => e.id === eventId);
-  if (!ev) return;
-  const byId = Object.create(null);
-  for (const p of list) byId[p.id] = p;
-
+/** 層級 1：所有背卡的大圖網格（不分活動，活動名稱顯示在卡片下方） */
+export function renderCardGrid(list, extraBg, lang, t) {
+  const cards = allCards();
   $("#list").innerHTML = `
-    <button class="crumb" type="button" data-back="events">← ${t("bgAllEvents")}</button>
-    <h2 class="gen-head">${esc(ev[lang] || ev.en)}<span>${esc(ev.date)}</span></h2>
-    <div class="bg-cards">
-      ${ev.cards
-        .map((c) => {
-          const got = c.pokemon.filter((id) => (byId[id]?.bg || []).includes(c.id)).length;
-          const note = c[`note_${lang}`] || c.note_en || "";
+    <div class="bg-grid">
+      ${cards
+        .map(({ event, card }) => {
+          const total = card.pokemon.length;
+          const got = countOwned(card, list, extraBg);
           return `
-        <button class="bg-card-item" type="button" data-card="${c.id}">
-          <img src="${c.img}" alt="" loading="lazy">
-          <span class="bg-info">
-            <span class="bg-title">${esc(c[lang] || c.en)}
-              <em class="scope-${c.scope}">${t(c.scope === "regional" ? "bgRegional" : "bgGlobal")}</em>
-            </span>
-            <span class="bg-note">${esc(note)}</span>
-            <span class="ev-prog">
-              <span class="bar"><i style="width:${c.pokemon.length ? (got / c.pokemon.length) * 100 : 0}%;background:var(--bg-card)"></i></span>
-              <span class="ev-n">${got}/${c.pokemon.length}</span>
+        <button class="bg-tile" type="button" data-card="${card.id}">
+          <span class="bg-thumb-wrap">
+            <img src="${card.img}" alt="" loading="lazy">
+            <em class="scope-${card.scope}">${t(card.scope === "regional" ? "bgRegional" : "bgGlobal")}</em>
+          </span>
+          <span class="bg-tile-body">
+            <span class="bg-tile-name">${esc(card[lang] || card.en)}</span>
+            <span class="bg-tile-ev">${esc(event[lang] || event.en)}</span>
+            <span class="bg-tile-foot">
+              <span class="bar"><i style="width:${total ? (got / total) * 100 : 0}%;background:var(--bg-card)"></i></span>
+              <span class="ev-n">${got}/${total}</span>
             </span>
           </span>
         </button>`;
@@ -380,42 +347,76 @@ export function renderCardList(eventId, list, lang, t) {
     </div>`;
 }
 
-/** 層級 3：某張背卡的寶可夢方格牆 */
-export function renderCardDetail(cardId, list, lang, t, canEdit) {
+/** 計算某張背卡已取得的數量，同時涵蓋傳說與一般寶可夢 */
+function countOwned(card, list, extraBg) {
+  const byId = Object.create(null);
+  for (const p of list) byId[p.id] = p;
+  const extra = new Set((extraBg && extraBg[card.id]) || []);
+  let n = 0;
+  for (const e of entriesOf(card)) {
+    if (e.pid) {
+      if ((byId[e.pid]?.bg || []).includes(card.id)) n++;
+    } else if (extra.has(e.key)) n++;
+  }
+  return n;
+}
+
+/** 層級 2：某張背卡的寶可夢方格牆 */
+export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
   const found = allCards().find(({ card }) => card.id === cardId);
   if (!found) return;
   const { event, card } = found;
+
   const byId = Object.create(null);
   for (const p of list) byId[p.id] = p;
+  const extra = new Set((extraBg && extraBg[card.id]) || []);
 
-  const items = card.pokemon.map((id) => byId[id]).filter(Boolean);
-  const got = items.filter((p) => (p.bg || []).includes(card.id)).length;
+  const cells = entriesOf(card)
+    .map((e) => {
+      let name, art, no, owned;
+      if (e.pid) {
+        const p = byId[e.pid];
+        if (!p) return "";
+        name = p[lang];
+        art = artUrl(p.art);
+        no = p.no;
+        owned = (p.bg || []).includes(card.id);
+      } else {
+        const d = lookup(e.dex, lang);
+        if (!d) return "";
+        name = d.name;
+        art = d.art;
+        no = d.no;
+        owned = extra.has(e.key);
+      }
+      const note = e.note ? e.note[lang] || e.note.en : "";
+      return `
+      <button class="cell bgcell${owned ? " is-owned" : " is-empty"}" type="button"
+              data-bgtoggle="${card.id}" data-entry="${e.key}" ${canEdit ? "" : "disabled"}>
+        <img src="${art}" alt="" loading="lazy" decoding="async">
+        <span class="nm">${esc(name)}</span>
+        ${note ? `<span class="note">${esc(note)}</span>` : ""}
+        <span class="dex">${dexNo(no)}</span>
+      </button>`;
+    })
+    .join("");
+
+  const total = card.pokemon.length;
+  const got = countOwned(card, list, extraBg);
 
   $("#list").innerHTML = `
-    <button class="crumb" type="button" data-back="cards" data-event="${event.id}">← ${esc(event[lang] || event.en)}</button>
+    <button class="crumb" type="button" data-back="grid">← ${t("bgAllEvents")}</button>
     <div class="bg-head">
       <img src="${card.img}" alt="">
       <div>
         <h2>${esc(card[lang] || card.en)}</h2>
+        <p class="bg-ev-line">${esc(event[lang] || event.en)} · ${esc(event.date)}</p>
         <p class="bg-note">${esc(card[`note_${lang}`] || card.note_en || "")}</p>
-        <p class="bg-count">${got} / ${items.length}</p>
+        <p class="bg-count">${got} / ${total}</p>
       </div>
     </div>
     ${canEdit ? "" : `<p class="guest-notice">${t("guestNotice")}</p>`}
-    <div class="grid">
-      ${items
-        .map((p) => {
-          const owned = (p.bg || []).includes(card.id);
-          return `
-        <button class="cell bgcell${owned ? " is-owned" : " is-empty"}" type="button"
-                data-bgtoggle="${card.id}" data-id="${p.id}" ${canEdit ? "" : "disabled"}>
-          <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
-          <span class="nm">${esc(p[lang])}</span>
-          <span class="dex">${dexNo(p.no)}</span>
-        </button>`;
-        })
-        .join("")}
-    </div>`;
+    <div class="grid">${cells}</div>`;
 }
 
 /** 檢視切換（寶可夢圖鑑 / 背卡圖鑑） */

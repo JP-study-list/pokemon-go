@@ -11,7 +11,15 @@
  * ── 如何新增一個活動 ──
  * 1. 在 EVENTS 陣列加一筆，id 不要跟既有的重複
  * 2. 背卡圖片放進 img/bg/，檔名對應 card.img
- * 3. pokemon 填 data.js 裡的 id（例如 "p003"）
+ * 3. pokemon 陣列有兩種寫法：
+ *
+ *    "p003"                    圖鑑（data.js）裡的傳說，直接用 id
+ *    { dex: 131 }              一般寶可夢，用全國圖鑑編號，名稱查 pokedex.js
+ *    { dex: 131, note_zh:"布蘭琪風", note_ja:"ブランシェ", note_en:"Blanche" }
+ *                              特殊造型，合併成本體但加註說明
+ *
+ * 造型一律合併成本體（例如帕底亞肯泰羅三種都算「肯泰羅」一格），
+ * 需要區分時用 note 註記。
  *
  * ── scope 的意思 ──
  * "global"   全球活動，所有玩家都有機會取得
@@ -81,7 +89,12 @@ export const EVENTS = [
         note_zh: "5/29～6/1 台場，僅限持票者。急凍鳥、水君為當場限定",
         note_ja: "5/29〜6/1 お台場、チケット所持者限定。フリーザーとスイクンが登場",
         note_en: "May 29 – Jun 1, Tokyo Waterfront City. Ticket holders only.",
-        pokemon: ["p000", "p006", "p003", "p014", "p015"],
+        pokemon: [
+          "p000", "p006", "p003", "p014", "p015",
+          { dex: 128, note_zh: "帕底亞的樣子・水", note_ja: "パルデアのすがた・水", note_en: "Paldean Aqua" },
+          { dex: 131, note_zh: "布蘭琪風", note_ja: "ブランシェ風", note_en: "Blanche-themed" },
+          { dex: 807 },
+        ],
       },
       {
         id: "gf26-chicago",
@@ -118,9 +131,37 @@ export function allCards() {
   return out;
 }
 
-/** 某隻寶可夢可能擁有的所有背卡 */
+/**
+ * 把 pokemon 陣列裡的一筆轉成統一格式。
+ * 兩種輸入：字串 id（圖鑑內的傳說）或 { dex, note_* }（一般寶可夢）。
+ * @returns {{key: string, pid: string|null, dex: number|null, note: object}}
+ */
+export function normalizeEntry(entry) {
+  if (typeof entry === "string") {
+    return { key: entry, pid: entry, dex: null, note: null };
+  }
+  return {
+    key: `d${entry.dex}`,
+    pid: null,
+    dex: entry.dex,
+    note: {
+      zh: entry.note_zh || "",
+      ja: entry.note_ja || "",
+      en: entry.note_en || "",
+    },
+  };
+}
+
+/** 某張背卡的所有項目（已正規化） */
+export function entriesOf(card) {
+  return card.pokemon.map(normalizeEntry);
+}
+
+/** 某隻寶可夢可能擁有的所有背卡（只查圖鑑內的傳說） */
 export function cardsFor(pokemonId) {
-  return allCards().filter(({ card }) => card.pokemon.includes(pokemonId));
+  return allCards().filter(({ card }) =>
+    card.pokemon.some((e) => typeof e === "string" && e === pokemonId)
+  );
 }
 
 /** 背卡總數（用於統計） */
