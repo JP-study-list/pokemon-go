@@ -82,7 +82,7 @@ export const EVENTS = [
       {
         id: "gf26-tokyo",
         scope: "regional",
-        img: "./img/bg/gofest2026-tokyo.png",
+        img: "./img/bg/gofest2026-tokyo.jpg",
         zh: "東京",
         ja: "東京",
         en: "Tokyo",
@@ -99,7 +99,7 @@ export const EVENTS = [
       {
         id: "gf26-chicago",
         scope: "regional",
-        img: "./img/bg/gofest2026-chicago.png",
+        img: "./img/bg/gofest2026-chicago.jpg",
         zh: "芝加哥",
         ja: "シカゴ",
         en: "Chicago",
@@ -116,7 +116,7 @@ export const EVENTS = [
       {
         id: "gf26-copenhagen",
         scope: "regional",
-        img: "./img/bg/gofest2026-copenhagen.png",
+        img: "./img/bg/gofest2026-copenhagen.jpg",
         zh: "哥本哈根",
         ja: "コペンハーゲン",
         en: "Copenhagen",
@@ -128,6 +128,35 @@ export const EVENTS = [
           { dex: 77, note_zh: "坎黛拉風", note_ja: "キャンデラ風", note_en: "Candela-themed" },
           { dex: 128, note_zh: "帕底亞的樣子・鬥", note_ja: "パルデアのすがた・格闘", note_en: "Paldean Combat" },
           { dex: 807 },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "gotour2026-kalos",
+    zh: "GO Tour: 卡洛斯 全球",
+    ja: "GO Tour: カロス グローバル",
+    en: "GO Tour: Kalos – Global",
+    date: "2026-02-28 ~ 03-02",
+    cards: [
+      {
+        id: "gt26-mega",
+        scope: "global",
+        img: "./img/bg/gotour2026-mega.webp",
+        zh: "GO Tour 2026 Mega",
+        ja: "GO Tour 2026 メガ",
+        en: "GO Tour 2026 Mega",
+        note_zh: "2/28～3/2 期間捕捉可超級進化的寶可夢有機率帶有",
+        note_ja: "2/28〜3/2 にメガシンカできるポケモンを捕獲すると付く可能性",
+        note_en: "From Mega-capable Pokémon caught between Feb 28 and Mar 2",
+        pokemon: [
+          { dex: 3 }, { dex: 6 }, { dex: 9 }, { dex: 18 }, { dex: 71 },
+          { dex: 115 }, { dex: 149 }, { dex: 212 }, { dex: 214 }, { dex: 248 },
+          { dex: 254 }, { dex: 257 }, { dex: 260 }, { dex: 282 }, { dex: 359 },
+          { dex: 373 }, { dex: 376 },
+          "p012", "p013",
+          { dex: 445 }, { dex: 448 }, { dex: 475 }, { dex: 687 },
         ],
       },
     ],
