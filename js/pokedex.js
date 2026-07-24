@@ -1042,21 +1042,32 @@ const DEX = {
   1025:["桃歹郎","モモワロウ","Pecharunt"],
 };
 
-/** 圖片網址（與 data.js 使用同一個 CDN） */
+/** 官方立繪（備援用） */
 const ART = (n) =>
   `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
+
+/**
+ * Pokémon GO 遊戲內圖示。
+ *
+ * 大部分寶可夢可以用 pm{編號}.icon.png 直接取得，
+ * 但有型態變化的需要後綴（例如 pm647.fORDINARY.icon.png），
+ * 而且第 9 代大多尚未實裝。因此這裡一律附上官方立繪作為備援，
+ * 找不到 GO 圖示時畫面會自動退回，不會出現破圖。
+ */
+const GO = (n) =>
+  `https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm${n}.icon.png`;
 
 /**
  * 查詢某個圖鑑編號的資料
  * @param {number} dex 全國圖鑑編號
  * @param {string} lang 語言代碼 zh / ja / en
- * @returns {{name: string, art: string, no: number} | null}
+ * @returns {{name: string, art: string, fallback: string, no: number} | null}
  */
 export function lookup(dex, lang) {
   const row = DEX[dex];
   if (!row) return null;
   const i = lang === "zh" ? 0 : lang === "ja" ? 1 : 2;
-  return { name: row[i], art: ART(dex), no: dex };
+  return { name: row[i], art: GO(dex), fallback: ART(dex), no: dex };
 }
 
 /** 圖鑑總數，用於檢查資料完整性 */

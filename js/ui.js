@@ -10,7 +10,7 @@
  * 想加篩選條件 → FILTERS 陣列 + applyFilter
  */
 
-import { artUrl } from "./data.js";
+import { spriteAttrs } from "./data.js";
 import { typeInfo } from "./types.js";
 import { movesetsFor } from "./moves.js";
 import { allCards, cardsFor, cardsForCostume, entriesOf } from "./backgrounds.js";
@@ -99,7 +99,7 @@ function renderCard(p, lang) {
       <span class="pips">
         ${pip(p.xxl, "var(--xxl)")}${pip(p.xxs, "var(--xxs)")}${pip(p.iv100.has, "var(--iv)")}${pip((p.bg || []).length > 0, "var(--bg-card)")}
       </span>
-      <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
+      <img ${spriteAttrs(p.go, p.art)} alt="" loading="lazy" decoding="async">
       <span class="nm">${esc(p[lang])}</span>
       <span class="dex">${dexNo(p.no)} · ${cp(p.cp20)} / ${cp(p.cp25)}</span>
     </button>`;
@@ -206,7 +206,7 @@ export function renderDetail(p, lang, t, canEdit, want, wantTab) {
 
   $("#panel").innerHTML = `
     <div class="d-top">
-      <img src="${artUrl(p.art)}" alt="" decoding="async">
+      <img ${spriteAttrs(p.go, p.art)} alt="" decoding="async">
       <div>
         <h2>${esc(p[lang])}</h2>
         <p class="d-alt">${others}<br>${dexNo(p.no)} · ${t("gen", p.gen)}</p>
@@ -403,12 +403,12 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
 
   const cells = entriesOf(card)
     .map((e) => {
-      let name, art, no, owned, isShiny;
+      let name, imgAttrs, no, owned, isShiny;
       if (e.pid) {
         const p = byId[e.pid];
         if (!p) return "";
         name = p[lang];
-        art = artUrl(p.art);
+        imgAttrs = spriteAttrs(p.go, p.art);
         no = p.no;
         owned = (p.bg || []).includes(card.id);
         isShiny = (p.bgShiny || []).includes(card.id);
@@ -418,13 +418,14 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
           // 裝扮皮卡丘：用裝扮的圖與名稱
           const d = lookup(e.dex, lang);
           name = d ? d.name : cos[lang] || cos.en;
-          art = costumeArt(cos.file);
+          imgAttrs = `src="${costumeArt(cos.file)}"`;
           no = e.dex;
         } else {
           const d = lookup(e.dex, lang);
           if (!d) return "";
           name = d.name;
-          art = d.art;
+          // GO 圖示找不到時自動退回官方立繪
+          imgAttrs = `src="${d.art}" onerror="this.onerror=null;this.src='${d.fallback}'"`;
           no = d.no;
         }
         owned = extra.has(e.key);
@@ -776,7 +777,7 @@ function wantCell(p, w, idx, lang, t, canEdit) {
   return `
     <div class="cell want-cell">
       ${bgLayer}
-      <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
+      <img ${spriteAttrs(p.go, p.art)} alt="" loading="lazy" decoding="async">
       <span class="nm">${esc(p[lang])}</span>
       ${tags ? `<span class="want-tags">${tags}</span>` : ""}
       ${
@@ -843,7 +844,7 @@ export function renderWantEdit(p, w, idx, lang, t) {
 
   $("#panel").innerHTML = `
     <div class="d-top">
-      <img src="${artUrl(p.art)}" alt="" decoding="async">
+      <img ${spriteAttrs(p.go, p.art)} alt="" decoding="async">
       <div>
         <h2>${esc(p[lang])}</h2>
         <p class="d-alt">${t("wantSection")}</p>

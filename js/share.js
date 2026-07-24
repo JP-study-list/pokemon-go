@@ -9,7 +9,7 @@
  * 「污染」（tainted），toBlob 會直接失敗。所有來源都支援 CORS。
  */
 
-import { artUrl } from "./data.js";
+import { artUrl, goUrl } from "./data.js";
 import { allCards } from "./backgrounds.js";
 
 const COLS = 4;
@@ -20,6 +20,7 @@ const NAME_H = 30;
 
 /** 載入圖片，失敗時回傳 null 而不中斷整張圖 */
 function loadImage(src) {
+  if (!src) return Promise.resolve(null);
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -27,6 +28,11 @@ function loadImage(src) {
     img.onerror = () => resolve(null);
     img.src = src;
   });
+}
+
+/** 先試 GO 圖示，失敗再退回官方立繪 */
+async function loadSprite(go, art) {
+  return (await loadImage(goUrl(go))) || (await loadImage(artUrl(art)));
 }
 
 /** 圓角矩形路徑 */
@@ -88,7 +94,7 @@ export async function buildShareImage(items, opts) {
   // 先把需要的圖全部載入，避免逐格等待
   const jobs = items.map(async (it) => ({
     it,
-    sprite: await loadImage(artUrl(it.art)),
+    sprite: await loadSprite(it.go, it.art),
     bgImg: it.want.bg && cardById[it.want.bg] ? await loadImage(cardById[it.want.bg].img) : null,
   }));
   const loaded = await Promise.all(jobs);
