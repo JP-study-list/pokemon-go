@@ -30,6 +30,8 @@ const state = {
   openId: null,
   openPika: null,
   openWant: null,
+  // 交換清單的新增流程 { open, id, xxl, xxs, shiny, bg, q }
+  pick: null,
   // 目前正在看的交換清單（0–3）
   wantTab: 0,
   // 背卡圖鑑的導覽狀態：level 為 grid（背卡總覽）或 cardDetail（單張背卡）
@@ -79,6 +81,9 @@ function draw() {
 }
 
 function drawDetail() {
+  if (state.pick) {
+    return ui.renderWantPicker(state.list, state.pick, state.lang, t, state.pick.q);
+  }
   if (state.openWant !== null) {
     const w = curList().items[state.openWant];
     const p = w && state.list.find((x) => x.id === w.id);
@@ -405,6 +410,59 @@ document.addEventListener("click", async (e) => {
   }
 
   // 皮卡丘面板裡的背卡開關
+  if (e.target.id === "wantPickBtn" || e.target.closest("#wantPickBtn")) {
+    state.pick = { q: "" };
+    state.openId = null;
+    state.openPika = null;
+    state.openWant = null;
+    drawDetail();
+    ui.openSheet();
+    return;
+  }
+
+  const pickCell = e.target.closest("[data-pick]");
+  if (pickCell && state.pick) {
+    state.pick = { ...state.pick, id: pickCell.dataset.pick, shiny: 1 };
+    drawDetail();
+    return;
+  }
+
+  const draftTog = e.target.closest("[data-draft]");
+  if (draftTog && state.pick) {
+    const k = draftTog.dataset.draft;
+    state.pick[k] = state.pick[k] ? 0 : 1;
+    drawDetail();
+    return;
+  }
+
+  const draftBg = e.target.closest("[data-draftbg]");
+  if (draftBg && state.pick) {
+    state.pick.bg = draftBg.dataset.draftbg || undefined;
+    drawDetail();
+    return;
+  }
+
+  if (e.target.id === "pickBack" && state.pick) {
+    state.pick = { q: state.pick.q || "" };
+    drawDetail();
+    return;
+  }
+
+  if (e.target.id === "pickConfirm" && state.pick && state.pick.id) {
+    const d = state.pick;
+    const entry = { id: d.id };
+    if (d.xxl) entry.xxl = 1;
+    if (d.xxs) entry.xxs = 1;
+    if (d.shiny) entry.shiny = 1;
+    if (d.bg) entry.bg = d.bg;
+    curList().items.push(entry);
+    state.pick = null;
+    ui.closeSheet();
+    draw();
+    save();
+    return;
+  }
+
   const wantNewBtn = e.target.closest("[data-wantnew]");
   if (wantNewBtn && !wantNewBtn.disabled) {
     wantNew(wantNewBtn.dataset.wantnew);
@@ -537,6 +595,7 @@ document.addEventListener("click", async (e) => {
     state.openId = cell.dataset.id;
     state.openPika = null;
     state.openWant = null;
+    state.pick = null;
     drawDetail();
     ui.openSheet();
     return;
@@ -555,6 +614,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "closeDetail" || e.target.id === "sheet") {
+    state.pick = null;
     ui.closeSheet();
     return;
   }
@@ -627,6 +687,22 @@ document.addEventListener("keydown", (e) => {
 $("#q").addEventListener("input", (e) => {
   state.query = e.target.value;
   draw();
+});
+
+// 挑選面板的搜尋框是動態產生的，用事件委派處理
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "pickSearch" || !state.pick) return;
+  state.pick.q = e.target.value;
+  const pos = e.target.selectionStart;
+  drawDetail();
+  // 重繪後要把游標放回原位，否則每打一個字就跳到最前面
+  const box = document.querySelector("#pickSearch");
+  if (box) {
+    box.focus();
+    try {
+      box.setSelectionRange(pos, pos);
+    } catch (_) {}
+  }
 });
 
 // 離開頁面前把還沒送出的變更寫掉

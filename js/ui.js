@@ -10,7 +10,7 @@
  * 想加篩選條件 → FILTERS 陣列 + applyFilter
  */
 
-import { spriteAttrs } from "./data.js";
+import { spriteAttrs, shinyAttrs } from "./data.js";
 import { typeInfo } from "./types.js";
 import { movesetsFor } from "./moves.js";
 import { allCards, cardsFor, cardsForCostume, entriesOf } from "./backgrounds.js";
@@ -63,6 +63,47 @@ const esc = (s) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
   );
 
+
+/**
+ * 遊戲風格的狀態圖示。
+ *
+ * 用內嵌 SVG 而非圖片檔，因為 PokeMiners 的圖示路徑不穩定，
+ * 而且這兩個形狀很簡單，內嵌可以避免額外的網路請求與破圖風險。
+ *
+ * shiny  三顆星，對應遊戲裡異色寶可夢的閃光特效
+ * lucky  菱形亮點，對應幸運寶可夢的金色閃爍
+ */
+const ICON_SHINY = `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M9 2.5l1.5 4L14.5 8l-4 1.5L9 13.5 7.5 9.5 3.5 8l4-1.5z"/>
+  <path d="M17 11l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z"/>
+  <path d="M11.5 16.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/>
+</svg>`;
+
+const ICON_LUCKY = `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M12 2.5c1.4 4.3 3.2 6.1 7.5 7.5-4.3 1.4-6.1 3.2-7.5 7.5-1.4-4.3-3.2-6.1-7.5-7.5 4.3-1.4 6.1-3.2 7.5-7.5z"/>
+  <circle cx="18.5" cy="18" r="2.2"/>
+</svg>`;
+
+/** 狀態圖示標記，顯示在卡片左上角 */
+function stateMark(kind, title) {
+  const svg = kind === "lucky" ? ICON_LUCKY : ICON_SHINY;
+  return `<span class="smark smark-${kind}" title="${esc(title)}">${svg}</span>`;
+}
+
+/** 依收集狀態產生左上角的圖示（異色亮晶晶時兩個都顯示） */
+function stateMarks(st, t) {
+  if (!st) return "";
+  const out = [];
+  if (st.both) {
+    out.push(stateMark("shiny", t("shinyLucky")));
+    out.push(stateMark("lucky", t("shinyLucky")));
+  } else {
+    if (st.shiny) out.push(stateMark("shiny", t("shiny")));
+    if (st.lucky) out.push(stateMark("lucky", t("lucky")));
+  }
+  return out.length ? `<span class="smarks">${out.join("")}</span>` : "";
+}
+
 const dexNo = (n) => `#${String(n).padStart(3, "0")}`;
 
 /* ─────────── 頂部統計 ─────────── */
@@ -89,7 +130,7 @@ export function renderStats(list) {
 
 /* ─────────── 卡片牆 ─────────── */
 
-function renderCard(p, lang) {
+function renderCard(p, lang, t) {
   const empty = !p.xxl && !p.xxs && !p.iv100.has && !(p.bg || []).length;
   const pip = (on, color) =>
     on ? `<i class="pip" style="background:${color}"></i>` : "";
@@ -99,6 +140,7 @@ function renderCard(p, lang) {
       <span class="pips">
         ${pip(p.xxl, "var(--xxl)")}${pip(p.xxs, "var(--xxs)")}${pip(p.iv100.has, "var(--iv)")}${pip((p.bg || []).length > 0, "var(--bg-card)")}
       </span>
+      ${stateMarks(p.iv100, t)}
       <img ${spriteAttrs(p.go, p.art)} alt="" loading="lazy" decoding="async">
       <span class="nm">${esc(p[lang])}</span>
       <span class="dex">${dexNo(p.no)} · ${cp(p.cp20)} / ${cp(p.cp25)}</span>
@@ -122,7 +164,7 @@ export function renderGrid(list, lang, t) {
           ${t("gen", g)}
           <span>${done}/${items.length} ${t("complete")}</span>
         </h2>
-        <div class="grid">${items.map((p) => renderCard(p, lang)).join("")}</div>
+        <div class="grid">${items.map((p) => renderCard(p, lang, t)).join("")}</div>
       </section>`;
     })
     .join("");
@@ -441,7 +483,7 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
       <div class="cell bgcell${owned ? " is-owned" : " is-empty"}">
         <button class="bgcell-main" type="button" data-bgtoggle="${card.id}"
                 data-entry="${e.key}" ${canEdit ? "" : "disabled"}>
-          <img src="${art}" alt="" loading="lazy" decoding="async">
+          <img ${imgAttrs} alt="" loading="lazy" decoding="async">
           <span class="nm">${esc(name)}</span>
           ${note ? `<span class="note">${esc(note)}</span>` : ""}
           <span class="dex">${dexNo(no)}</span>
@@ -581,19 +623,13 @@ export function renderPikaGrid(pika, lang, t, canEdit, query) {
       ${items
         .map((c) => {
           const has = owned.has(c.id);
-          const color = both.has(c.id)
-            ? "var(--both)"
-            : shiny.has(c.id)
-            ? "var(--shiny)"
-            : lucky.has(c.id)
-            ? "var(--lucky)"
-            : null;
-          const pip = color
-            ? `<span class="pips"><i class="pip" style="background:${color}"></i></span>`
-            : "";
+          const marks = stateMarks(
+            { shiny: shiny.has(c.id), lucky: lucky.has(c.id), both: both.has(c.id) },
+            t
+          );
           return `
         <button class="cell${has ? " is-owned" : " is-empty"}" type="button" data-pikaopen="${c.id}">
-          ${pip}
+          ${marks}
           <img src="${costumeArt(c.file)}" alt="" loading="lazy" decoding="async">
           <span class="nm">${esc(c[lang] || c.en)}</span>
         </button>`;
@@ -760,7 +796,8 @@ export function renderWantGrid(list, want, active, lang, t, canEdit, query) {
       rows.length
         ? `<div class="grid">${rows.map((x) => wantCell(x.p, x.w, x.i, lang, t, canEdit)).join("")}</div>`
         : `<p class="empty">${t("wantEmpty")}</p>`
-    }`;
+    }
+    ${canEdit ? `<button class="fab" type="button" id="wantPickBtn" title="${esc(t("wantAdd"))}">+</button>` : ""}`;
 }
 
 function wantCell(p, w, idx, lang, t, canEdit) {
@@ -777,7 +814,7 @@ function wantCell(p, w, idx, lang, t, canEdit) {
   return `
     <div class="cell want-cell">
       ${bgLayer}
-      <img ${spriteAttrs(p.go, p.art)} alt="" loading="lazy" decoding="async">
+      <img ${w.shiny ? shinyAttrs(p) : spriteAttrs(p.go, p.art)} alt="" loading="lazy" decoding="async">
       <span class="nm">${esc(p[lang])}</span>
       ${tags ? `<span class="want-tags">${tags}</span>` : ""}
       ${
@@ -879,3 +916,88 @@ export function renderWantEdit(p, w, idx, lang, t) {
     <button class="btn-close" type="button" data-wantback="${p.id}">${t("wantDone")}</button>`;
 }
 
+
+/**
+ * 挑選面板：從傳說圖鑑選一隻加入交換清單。
+ * 可直接勾選異色與背卡，選完一次建立。
+ */
+export function renderWantPicker(list, draft, lang, t, query) {
+  const q = (query || "").trim().toLowerCase();
+  const sel = draft.id ? list.find((p) => p.id === draft.id) : null;
+
+  if (!sel) {
+    const rows = list.filter(
+      (p) =>
+        !q ||
+        p.zh.toLowerCase().includes(q) ||
+        p.ja.toLowerCase().includes(q) ||
+        p.en.toLowerCase().includes(q) ||
+        String(p.no).includes(q)
+    );
+    $("#panel").innerHTML = `
+      <p class="d-sect">${t("wantPickMon")}</p>
+      <input type="search" class="pick-search" id="pickSearch"
+             placeholder="${esc(t("search"))}" value="${esc(query || "")}">
+      <div class="pick-grid">
+        ${rows
+          .map(
+            (p) => `
+          <button class="pick-cell" type="button" data-pick="${p.id}">
+            <img ${spriteAttrs(p.go, p.art)} alt="" loading="lazy" decoding="async">
+            <span class="nm">${esc(p[lang])}</span>
+          </button>`
+          )
+          .join("")}
+      </div>
+      ${rows.length ? "" : `<p class="empty">${t("empty")}</p>`}
+      <button class="btn-close" type="button" id="closeDetail">${t("close")}</button>`;
+    return;
+  }
+
+  // 已選定寶可夢，設定條件
+  const cards = cardsFor(sel.id);
+  const tog = (key, label, on, color) => `
+    <button class="tog" type="button" data-draft="${key}" data-on="${on ? 1 : 0}"
+            style="--tog:${color}">
+      <span>${label}</span><span class="sw" aria-hidden="true"></span>
+    </button>`;
+
+  $("#panel").innerHTML = `
+    <div class="d-top">
+      <img ${draft.shiny ? shinyAttrs(sel) : spriteAttrs(sel.go, sel.art)} alt="" decoding="async">
+      <div>
+        <h2>${esc(sel[lang])}</h2>
+        <p class="d-alt">${dexNo(sel.no)}</p>
+      </div>
+    </div>
+
+    <p class="d-sect">${t("status")}</p>
+    <div class="togs">
+      ${tog("xxl", t("xxl"), draft.xxl, "var(--xxl)")}
+      ${tog("xxs", t("xxs"), draft.xxs, "var(--xxs)")}
+      ${tog("shiny", t("shiny"), draft.shiny, "var(--shiny)")}
+    </div>
+
+    ${
+      cards.length
+        ? `<p class="d-sect">${t("bgSection")}</p>
+           <div class="want-bgpick">
+             <button class="bgpick${!draft.bg ? " is-on" : ""}" type="button" data-draftbg="">${t("wantNoBg")}</button>
+             ${cards
+               .map(
+                 ({ card }) => `
+               <button class="bgpick${draft.bg === card.id ? " is-on" : ""}" type="button"
+                       data-draftbg="${card.id}" title="${esc(card[lang] || card.en)}">
+                 <img src="${card.img}" alt="">
+               </button>`
+               )
+               .join("")}
+           </div>`
+        : ""
+    }
+
+    <div class="pick-actions">
+      <button class="btn-close" type="button" id="pickBack">${t("wantBack")}</button>
+      <button class="btn-primary" type="button" id="pickConfirm">${t("wantConfirm")}</button>
+    </div>`;
+}
