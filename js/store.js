@@ -9,7 +9,10 @@
  *
  * ── Firestore 結構 ──
  * users/{uid}
- *   states: { p000: {xxl, xxs, iv100:{has,shiny,lucky}}, p001: {...} }
+ *   states: { p000: {xxl, xxs, iv100:{has,shiny,lucky,both}}, p001: {...} }
+ *
+ * iv100.both 表示「同時是異色又是亮晶晶的個體」，
+ * 它是獨立的收藏成就，不由 shiny / lucky 推導。
  *   bg:     { "gf26-global": ["p003*","d131"], ... }  背卡：卡片 → 已取得的項目
  *   pika:   ["normal", "reds-hat*", ...]              裝扮皮卡丘，同樣用 "*" 表示異色
  *   updated: 時間戳
@@ -65,6 +68,7 @@ export function buildList(states, bg) {
         has: !!(s && s.iv100 && s.iv100.has),
         shiny: !!(s && s.iv100 && s.iv100.shiny),
         lucky: !!(s && s.iv100 && s.iv100.lucky),
+        both: !!(s && s.iv100 && s.iv100.both),
       },
       bg: owned[p.id] || [],
       bgShiny: shiny[p.id] || [],
@@ -81,7 +85,12 @@ function extractStates(list) {
     out[p.id] = {
       xxl: p.xxl,
       xxs: p.xxs,
-      iv100: { has: p.iv100.has, shiny: p.iv100.shiny, lucky: p.iv100.lucky },
+      iv100: {
+        has: p.iv100.has,
+        shiny: p.iv100.shiny,
+        lucky: p.iv100.lucky,
+        both: p.iv100.both,
+      },
     };
   }
   return out;

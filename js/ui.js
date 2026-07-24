@@ -12,6 +12,7 @@
 
 import { artUrl } from "./data.js";
 import { typeInfo } from "./types.js";
+import { movesetsFor } from "./moves.js";
 import { allCards, cardsFor, cardsForCostume, entriesOf } from "./backgrounds.js";
 import { lookup } from "./pokedex.js";
 import { COSTUMES, costumeArt, findCostume, COSTUME_COUNT } from "./pikachu.js";
@@ -138,9 +139,11 @@ export function renderDetail(p, lang, t, canEdit) {
   const cp = (v) =>
     v == null ? `<span class="cp-none">${t("noCp")}</span>` : v;
 
-  const toggle = (key, label, on, color) => `
-    <button class="tog" type="button" data-key="${key}" data-on="${on ? 1 : 0}"
-            style="--tog:${color}" ${canEdit ? "" : "disabled"}>
+  const toggle = (key, label, on, color, locked) => `
+    <button class="tog${locked ? " is-locked" : ""}" type="button" data-key="${key}"
+            data-on="${on ? 1 : 0}" style="--tog:${color}"
+            ${canEdit && !locked ? "" : "disabled"}
+            ${locked ? `title="${esc(t("lockedByBoth"))}"` : ""}>
       <span>${label}</span><span class="sw" aria-hidden="true"></span>
     </button>`;
 
@@ -150,6 +153,32 @@ export function renderDetail(p, lang, t, canEdit) {
       return `<span class="type-tag" style="--tt:${color}">${esc(name)}</span>`;
     })
     .join("");
+
+  // 團體戰最佳配招
+  const sets = movesetsFor(p.id, lang);
+  const moveBlock = sets.length
+    ? `
+    <p class="d-sect">${t("bestMoves")}</p>
+    <div class="movesets">
+      ${sets
+        .map(
+          (m, i) => `
+        <div class="moveset">
+          <span class="ms-rank">${i + 1}</span>
+          <span class="ms-moves">
+            <span class="mv" style="--mv:var(--type-${m.fast.type})">${esc(m.fast.name)}${
+              m.eliteFast ? `<em title="${esc(t("eliteMove"))}">★</em>` : ""
+            }</span>
+            <span class="ms-plus">+</span>
+            <span class="mv" style="--mv:var(--type-${m.charged.type})">${esc(m.charged.name)}${
+              m.eliteCharged ? `<em title="${esc(t("eliteMove"))}">★</em>` : ""
+            }</span>
+          </span>
+        </div>`
+        )
+        .join("")}
+    </div>`
+    : "";
 
   const myCards = cardsFor(p.id);
   const bgOwned = new Set(p.bg || []);
@@ -190,14 +219,17 @@ export function renderDetail(p, lang, t, canEdit) {
       <div class="cpbox"><span class="k">${t("cp25")}</span><span class="v">${cp(p.cp25)}</span></div>
     </div>
 
+    ${moveBlock}
+
     <p class="d-sect">${t("status")}</p>
     <div class="togs">
       ${toggle("xxl", t("xxl"), p.xxl, "var(--xxl)")}
       ${toggle("xxs", t("xxs"), p.xxs, "var(--xxs)")}
       ${toggle("has", t("iv100"), p.iv100.has, "var(--iv)")}
       <div class="sub"${p.iv100.has ? "" : " hidden"}>
-        ${toggle("shiny", t("shiny"), p.iv100.shiny, "var(--shiny)")}
-        ${toggle("lucky", t("lucky"), p.iv100.lucky, "var(--lucky)")}
+        ${toggle("shiny", t("shiny"), p.iv100.shiny, "var(--shiny)", p.iv100.both)}
+        ${toggle("lucky", t("lucky"), p.iv100.lucky, "var(--lucky)", p.iv100.both)}
+        ${toggle("both", t("shinyLucky"), p.iv100.both, "var(--both)", false)}
       </div>
     </div>
     ${bgSection}
@@ -462,26 +494,56 @@ export function setView(view, t) {
 
 /* ─────────── 皮卡丘圖鑑 ─────────── */
 
-/** 把 pika 陣列拆成「擁有」與「異色」兩個集合 */
+/**
+ * 把 pika 陣列拆成幾個集合。
+ *
+ * 鍵的後綴表示額外狀態，可以疊加：
+ *   "reds-hat"    一般
+ *   "reds-hat*"   異色
+ *   "reds-hat+"   亮晶晶
+ *   "reds-hat#"   異色亮晶晶（最難的那種，獨立成就）
+ *
+ * 舊資料只有 "*"，讀進來行為不變。
+ */
 export function pikaSets(pika) {
   const owned = new Set();
   const shiny = new Set();
+  const lucky = new Set();
+  const both = new Set();
   for (const raw of pika || []) {
-    if (typeof raw !== "string") continue;
-    const isShiny = raw.endsWith("*");
-    const id = isShiny ? raw.slice(0, -1) : raw;
+    if (typeof raw !== "string" || !raw) continue;
+    let id = raw;
+    let s = false, l = false, b = false;
+    // 後綴可能有多個，逐一剝除
+    while (id.length && "*+#".includes(id[id.length - 1])) {
+      const ch = id[id.length - 1];
+      if (ch === "*") s = true;
+      else if (ch === "+") l = true;
+      else b = true;
+      id = id.slice(0, -1);
+    }
+    if (!id) continue;
     owned.add(id);
-    if (isShiny) shiny.add(id);
+    if (s) shiny.add(id);
+    if (l) lucky.add(id);
+    if (b) both.add(id);
   }
-  return { owned, shiny };
+  return { owned, shiny, lucky, both };
+}
+
+/** 依狀態組出儲存用的鍵 */
+export function pikaKey(id, st) {
+  return id + (st.shiny ? "*" : "") + (st.lucky ? "+" : "") + (st.both ? "#" : "");
 }
 
 export function renderPikaStats(pika, t) {
-  const { owned, shiny } = pikaSets(pika);
+  const { owned, shiny, lucky, both } = pikaSets(pika);
   const total = COSTUME_COUNT;
   const rows = [
     [t("pikaOwned"), owned.size, "var(--iv)"],
-    [t("pikaShiny"), shiny.size, "var(--shiny)"],
+    [t("shiny"), shiny.size, "var(--shiny)"],
+    [t("lucky"), lucky.size, "var(--lucky)"],
+    [t("shinyLucky"), both.size, "var(--both)"],
   ];
   $("#stats").innerHTML = rows
     .map(
@@ -496,7 +558,7 @@ export function renderPikaStats(pika, t) {
 }
 
 export function renderPikaGrid(pika, lang, t, canEdit, query) {
-  const { owned, shiny } = pikaSets(pika);
+  const { owned, shiny, lucky, both } = pikaSets(pika);
   const q = (query || "").trim().toLowerCase();
   const items = COSTUMES.filter(
     (c) =>
@@ -517,9 +579,15 @@ export function renderPikaGrid(pika, lang, t, canEdit, query) {
       ${items
         .map((c) => {
           const has = owned.has(c.id);
-          const isShiny = shiny.has(c.id);
-          const pip = isShiny
-            ? `<span class="pips"><i class="pip" style="background:var(--shiny)"></i></span>`
+          const color = both.has(c.id)
+            ? "var(--both)"
+            : shiny.has(c.id)
+            ? "var(--shiny)"
+            : lucky.has(c.id)
+            ? "var(--lucky)"
+            : null;
+          const pip = color
+            ? `<span class="pips"><i class="pip" style="background:${color}"></i></span>`
             : "";
           return `
         <button class="cell${has ? " is-owned" : " is-empty"}" type="button" data-pikaopen="${c.id}">
@@ -536,18 +604,22 @@ export function renderPikaGrid(pika, lang, t, canEdit, query) {
 export function renderPikaDetail(costumeId, pika, extraBg, lang, t, canEdit) {
   const c = findCostume(costumeId);
   if (!c) return;
-  const { owned, shiny } = pikaSets(pika);
-  const has = owned.has(c.id);
-  const isShiny = shiny.has(c.id);
+  const sets = pikaSets(pika);
+  const has = sets.owned.has(c.id);
+  const isShiny = sets.shiny.has(c.id);
+  const isLucky = sets.lucky.has(c.id);
+  const isBoth = sets.both.has(c.id);
 
   const others = ["zh", "ja", "en"]
     .filter((k) => k !== lang)
     .map((k) => esc(c[k]))
     .join(" · ");
 
-  const toggle = (key, label, on, color, disabled) => `
-    <button class="tog" type="button" data-pikakey="${key}" data-on="${on ? 1 : 0}"
-            style="--tog:${color}" ${canEdit && !disabled ? "" : "disabled"}>
+  const toggle = (key, label, on, color, locked) => `
+    <button class="tog${locked ? " is-locked" : ""}" type="button" data-pikakey="${key}"
+            data-on="${on ? 1 : 0}" style="--tog:${color}"
+            ${canEdit && !locked ? "" : "disabled"}
+            ${locked ? `title="${esc(t("lockedByBoth"))}"` : ""}>
       <span>${label}</span><span class="sw" aria-hidden="true"></span>
     </button>`;
 
@@ -588,7 +660,11 @@ export function renderPikaDetail(costumeId, pika, extraBg, lang, t, canEdit) {
     <p class="d-sect">${t("status")}</p>
     <div class="togs">
       ${toggle("has", t("pikaOwned"), has, "var(--iv)", false)}
-      ${toggle("shiny", t("shiny"), isShiny, "var(--shiny)", !has)}
+      <div class="sub"${has ? "" : " hidden"}>
+        ${toggle("shiny", t("shiny"), isShiny, "var(--shiny)", isBoth)}
+        ${toggle("lucky", t("lucky"), isLucky, "var(--lucky)", isBoth)}
+        ${toggle("both", t("shinyLucky"), isBoth, "var(--both)", false)}
+      </div>
     </div>
     ${bgSection}
 

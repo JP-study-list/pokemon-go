@@ -85,12 +85,22 @@ function toggleField(key) {
     p[key] = !p[key];
   } else if (key === "has") {
     p.iv100.has = !p.iv100.has;
-    // 沒有 IV100 就不該有異色 / 亮晶晶，一併清掉避免矛盾狀態
+    // 沒有 IV100 就不該有子狀態，一併清掉避免矛盾
     if (!p.iv100.has) {
       p.iv100.shiny = false;
       p.iv100.lucky = false;
+      p.iv100.both = false;
+    }
+  } else if (key === "both") {
+    p.iv100.both = !p.iv100.both;
+    // 異色亮晶晶必然同時是異色與亮晶晶
+    if (p.iv100.both) {
+      p.iv100.shiny = true;
+      p.iv100.lucky = true;
     }
   } else {
+    // both 開著時，異色與亮晶晶被鎖住（UI 已 disabled，這裡再擋一次）
+    if (p.iv100.both) return;
     p.iv100[key] = !p.iv100[key];
   }
 
@@ -158,23 +168,53 @@ function toggleBgShiny(entryKey, cardId) {
   save();
 }
 
-/** 切換某個裝扮皮卡丘的擁有狀態 */
-function togglePika(id) {
-  if (!state.user) return;
-  const i = state.pika.findIndex((k) => k === id || k === `${id}*`);
-  if (i >= 0) state.pika.splice(i, 1);
-  else state.pika.push(id);
-  draw();
-  if (ui.isSheetOpen()) drawDetail();
-  save();
+/** 找出某個裝扮在 pika 陣列裡的位置（忽略後綴） */
+function pikaIndex(id) {
+  return state.pika.findIndex((k) => {
+    const bare = String(k).replace(/[*+#]+$/, "");
+    return bare === id;
+  });
 }
 
-/** 切換某個裝扮皮卡丘的異色標記（必須先擁有） */
-function togglePikaShiny(id) {
-  if (!state.user) return;
-  const i = state.pika.findIndex((k) => k === id || k === `${id}*`);
-  if (i < 0) return;
-  state.pika[i] = state.pika[i].endsWith("*") ? id : `${id}*`;
+/** 讀出某個裝扮目前的狀態 */
+function pikaState(id) {
+  const sets = ui.pikaSets(state.pika);
+  return {
+    has: sets.owned.has(id),
+    shiny: sets.shiny.has(id),
+    lucky: sets.lucky.has(id),
+    both: sets.both.has(id),
+  };
+}
+
+/**
+ * 切換裝扮皮卡丘的狀態。
+ * key 為 has / shiny / lucky / both。
+ */
+function togglePikaState(id, key) {
+  if (!state.user || !id) return;
+  const st = pikaState(id);
+  const i = pikaIndex(id);
+
+  if (key === "has") {
+    if (st.has) state.pika.splice(i, 1); // 取消擁有時所有子狀態一併消失
+    else state.pika.push(id);
+  } else {
+    if (!st.has || i < 0) return;
+    if (key === "both") {
+      st.both = !st.both;
+      // 異色亮晶晶必然同時是異色與亮晶晶
+      if (st.both) {
+        st.shiny = true;
+        st.lucky = true;
+      }
+    } else {
+      if (st.both) return; // both 開著時鎖住
+      st[key] = !st[key];
+    }
+    state.pika[i] = ui.pikaKey(id, st);
+  }
+
   draw();
   if (ui.isSheetOpen()) drawDetail();
   save();
@@ -236,10 +276,9 @@ document.addEventListener("click", async (e) => {
   }
 
   // 皮卡丘面板裡的擁有／異色開關
-  const pikaKey = e.target.closest("[data-pikakey]");
-  if (pikaKey && !pikaKey.disabled) {
-    if (pikaKey.dataset.pikakey === "has") togglePika(state.openPika);
-    else togglePikaShiny(state.openPika);
+  const pikaTog = e.target.closest("[data-pikakey]");
+  if (pikaTog && !pikaTog.disabled) {
+    togglePikaState(state.openPika, pikaTog.dataset.pikakey);
     return;
   }
 

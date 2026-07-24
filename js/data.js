@@ -108,5 +108,5 @@ export const artUrl = (art) =>
 export const blankState = () => ({
   xxl: false,
   xxs: false,
-  iv100: { has: false, shiny: false, lucky: false },
+  iv100: { has: false, shiny: false, lucky: false, both: false },
 });
