@@ -130,7 +130,7 @@ export function renderGrid(list, lang, t) {
 
 /* ─────────── 詳情面板 ─────────── */
 
-export function renderDetail(p, lang, t, canEdit) {
+export function renderDetail(p, lang, t, canEdit, want, wantTab) {
   const others = ["zh", "ja", "en"]
     .filter((k) => k !== lang)
     .map((k) => esc(p[k]))
@@ -233,6 +233,7 @@ export function renderDetail(p, lang, t, canEdit) {
       </div>
     </div>
     ${bgSection}
+    ${wantSection(p, want, wantTab || 0, lang, t, canEdit)}
 
     <button class="btn-close" type="button" id="closeDetail">${t("close")}</button>`;
 }
@@ -472,7 +473,8 @@ export function buildViewSwitch() {
   $("#views").innerHTML = `
     <button type="button" data-view="dex" class="is-on"></button>
     <button type="button" data-view="bg"></button>
-    <button type="button" data-view="pika"></button>`;
+    <button type="button" data-view="pika"></button>
+    <button type="button" data-view="want"></button>`;
 }
 
 /**
@@ -483,9 +485,8 @@ export function setView(view, t) {
     const on = b.dataset.view === view;
     b.classList.toggle("is-on", on);
     b.setAttribute("aria-pressed", on ? "true" : "false");
-    b.textContent = t(
-      b.dataset.view === "dex" ? "viewDex" : b.dataset.view === "bg" ? "viewBg" : "viewPika"
-    );
+    const map = { dex: "viewDex", bg: "viewBg", pika: "viewPika", want: "viewWant" };
+    b.textContent = t(map[b.dataset.view]);
   });
   // 搜尋在寶可夢圖鑑與皮卡丘圖鑑都有用；篩選只對寶可夢圖鑑有意義
   $("#q").hidden = view === "bg";
@@ -708,3 +709,172 @@ export function toggleSettings(force) {
 export function settingsOpen() {
   return !$("#settingsWrap").hidden;
 }
+
+/* ─────────── 交換清單 ─────────── */
+
+/** 清單分頁 + 方格牆。背卡疊在立繪後方，XXL/XXS/異色以文字標籤疊在前面 */
+export function renderWantGrid(list, want, active, lang, t, canEdit, query) {
+  const byId = Object.create(null);
+  for (const p of list) byId[p.id] = p;
+
+  const cur = want.lists[active] || { name: "", items: [] };
+  const q = (query || "").trim().toLowerCase();
+  const rows = cur.items
+    .map((w, i) => ({ w, i, p: byId[w.id] }))
+    .filter((x) => x.p)
+    .filter(
+      (x) =>
+        !q ||
+        x.p.zh.toLowerCase().includes(q) ||
+        x.p.ja.toLowerCase().includes(q) ||
+        x.p.en.toLowerCase().includes(q) ||
+        String(x.p.no).includes(q)
+    );
+
+  const tabs = want.lists
+    .map(
+      (l, i) => `
+      <button class="wtab${i === active ? " is-on" : ""}" type="button" data-wanttab="${i}">
+        ${esc(l.name || t("wantListN", i + 1))}
+        ${l.items.length ? `<em>${l.items.length}</em>` : ""}
+      </button>`
+    )
+    .join("");
+
+  $("#list").innerHTML = `
+    ${canEdit ? "" : `<p class="guest-notice">${t("guestNotice")}</p>`}
+    <div class="wtabs">${tabs}</div>
+    <div class="want-bar">
+      <button class="chip" type="button" id="renameBtn" ${canEdit ? "" : "disabled"}>
+        ${t("wantRename")}
+      </button>
+      <button class="chip" type="button" id="addMissingBtn" ${canEdit ? "" : "disabled"}>
+        ${t("wantAddMissing")}
+      </button>
+      <button class="chip is-on" type="button" id="shareBtn" ${cur.items.length ? "" : "disabled"}>
+        ${t("shareImage")}
+      </button>
+    </div>
+    ${
+      rows.length
+        ? `<div class="grid">${rows.map((x) => wantCell(x.p, x.w, x.i, lang, t, canEdit)).join("")}</div>`
+        : `<p class="empty">${t("wantEmpty")}</p>`
+    }`;
+}
+
+function wantCell(p, w, idx, lang, t, canEdit) {
+  const found = w.bg ? allCards().find((x) => x.card.id === w.bg) : null;
+  const bgLayer = found
+    ? `<span class="want-bg" style="background-image:url('${found.card.img}')"></span>`
+    : "";
+  const tags = [
+    w.xxl ? `<em class="wt" style="--wt:var(--xxl)">XXL</em>` : "",
+    w.xxs ? `<em class="wt" style="--wt:var(--xxs)">XXS</em>` : "",
+    w.shiny ? `<em class="wt" style="--wt:var(--shiny)">✦</em>` : "",
+  ].join("");
+
+  return `
+    <div class="cell want-cell">
+      ${bgLayer}
+      <img src="${artUrl(p.art)}" alt="" loading="lazy" decoding="async">
+      <span class="nm">${esc(p[lang])}</span>
+      ${tags ? `<span class="want-tags">${tags}</span>` : ""}
+      ${
+        canEdit
+          ? `<button class="want-del" type="button" data-wantdel="${idx}"
+                     title="${esc(t("wantRemove"))}">×</button>`
+          : ""
+      }
+    </div>`;
+}
+
+/** 詳情面板裡的「想要」設定區。同一隻可以有多筆不同需求 */
+export function wantSection(p, want, active, lang, t, canEdit) {
+  const cur = want.lists[active] || { items: [] };
+  const mine = cur.items
+    .map((w, i) => ({ w, i }))
+    .filter((x) => x.w.id === p.id);
+  const cards = cardsFor(p.id);
+
+  const describe = (w) => {
+    const parts = [];
+    if (w.xxl) parts.push(`<em class="wt" style="--wt:var(--xxl)">XXL</em>`);
+    if (w.xxs) parts.push(`<em class="wt" style="--wt:var(--xxs)">XXS</em>`);
+    if (w.shiny) parts.push(`<em class="wt" style="--wt:var(--shiny)">✦</em>`);
+    if (w.bg) {
+      const c = allCards().find((x) => x.card.id === w.bg);
+      if (c) parts.push(`<em class="wt" style="--wt:var(--bg-card)">${esc(c.card[lang] || c.card.en)}</em>`);
+    }
+    return parts.length ? parts.join("") : `<span class="want-any">${t("wantAny")}</span>`;
+  };
+
+  const rows = mine
+    .map(
+      ({ w, i }) => `
+      <div class="want-row">
+        <span class="want-row-tags">${describe(w)}</span>
+        <span class="want-row-btns">
+          <button class="mini" type="button" data-wantedit="${i}" ${canEdit ? "" : "disabled"}>${t("wantEdit")}</button>
+          <button class="mini" type="button" data-wantdel="${i}" ${canEdit ? "" : "disabled"}>×</button>
+        </span>
+      </div>`
+    )
+    .join("");
+
+  const listName = (want.lists[active] && want.lists[active].name) || t("wantListN", active + 1);
+  return `
+    <p class="d-sect">${t("wantSection")} · ${esc(listName)}</p>
+    <div class="want-rows">
+      ${rows || `<p class="want-none">${t("wantNone")}</p>`}
+      <button class="btn-add" type="button" data-wantnew="${p.id}" ${canEdit ? "" : "disabled"}>
+        + ${t("wantAdd")}
+      </button>
+    </div>`;
+}
+
+/** 編輯單筆需求的面板 */
+export function renderWantEdit(p, w, idx, lang, t) {
+  const cards = cardsFor(p.id);
+  const tog = (key, label, val, color) => `
+    <button class="tog" type="button" data-wantset="${key}" data-on="${val ? 1 : 0}"
+            style="--tog:${color}">
+      <span>${label}</span><span class="sw" aria-hidden="true"></span>
+    </button>`;
+
+  $("#panel").innerHTML = `
+    <div class="d-top">
+      <img src="${artUrl(p.art)}" alt="" decoding="async">
+      <div>
+        <h2>${esc(p[lang])}</h2>
+        <p class="d-alt">${t("wantSection")}</p>
+      </div>
+    </div>
+
+    <p class="d-sect">${t("status")}</p>
+    <div class="togs">
+      ${tog("xxl", t("xxl"), w.xxl, "var(--xxl)")}
+      ${tog("xxs", t("xxs"), w.xxs, "var(--xxs)")}
+      ${tog("shiny", t("shiny"), w.shiny, "var(--shiny)")}
+    </div>
+
+    ${
+      cards.length
+        ? `<p class="d-sect">${t("bgSection")}</p>
+           <div class="want-bgpick">
+             <button class="bgpick${!w.bg ? " is-on" : ""}" type="button" data-wantbg="">${t("wantNoBg")}</button>
+             ${cards
+               .map(
+                 ({ card }) => `
+               <button class="bgpick${w.bg === card.id ? " is-on" : ""}" type="button"
+                       data-wantbg="${card.id}" title="${esc(card[lang] || card.en)}">
+                 <img src="${card.img}" alt="">
+               </button>`
+               )
+               .join("")}
+           </div>`
+        : ""
+    }
+
+    <button class="btn-close" type="button" data-wantback="${p.id}">${t("wantDone")}</button>`;
+}
+

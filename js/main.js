@@ -9,6 +9,7 @@ import { LANGS, DEFAULT_LANG, makeT } from "./i18n.js";
 import { signIn, signOut, watchAuth } from "./auth.js";
 import { loadUser, guestList, saveUser, flush } from "./store.js";
 import * as ui from "./ui.js";
+import { buildShareImage, downloadBlob } from "./share.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -19,6 +20,8 @@ const state = {
   list: guest.list,
   // 裝扮皮卡丘紀錄，["normal", "reds-hat*", ...]
   pika: guest.pika,
+  // 交換想要清單 { p003: {xxl,xxs,shiny,bg} }
+  want: guest.want,
   // 不在圖鑑 79 隻內的背卡紀錄 { cardId: ["d131", ...] }
   extraBg: guest.extraBg,
   lang: DEFAULT_LANG,
@@ -26,6 +29,9 @@ const state = {
   query: "",
   openId: null,
   openPika: null,
+  openWant: null,
+  // 目前正在看的交換清單（0–3）
+  wantTab: 0,
   // 背卡圖鑑的導覽狀態：level 為 grid（背卡總覽）或 cardDetail（單張背卡）
   view: "dex",
   nav: { level: "grid", cardId: null },
@@ -37,6 +43,14 @@ let t = makeT(state.lang);
 
 function draw() {
   ui.setView(state.view, t);
+
+  if (state.view === "want") {
+    ui.renderStats(state.list);
+    ui.renderFilterCounts(state.list);
+    ui.renderGuestNotice(false, t);
+    ui.renderWantGrid(state.list, state.want, state.wantTab, state.lang, t, !!state.user, state.query);
+    return;
+  }
 
   if (state.view === "pika") {
     ui.renderPikaStats(state.pika, t);
@@ -65,13 +79,19 @@ function draw() {
 }
 
 function drawDetail() {
+  if (state.openWant !== null) {
+    const w = curList().items[state.openWant];
+    const p = w && state.list.find((x) => x.id === w.id);
+    if (p) return ui.renderWantEdit(p, w, state.openWant, state.lang, t);
+    state.openWant = null;
+  }
   if (state.openPika) {
     ui.renderPikaDetail(state.openPika, state.pika, state.extraBg, state.lang, t, !!state.user);
     return;
   }
   const p = state.list.find((x) => x.id === state.openId);
   if (!p) return;
-  ui.renderDetail(p, state.lang, t, !!state.user);
+  ui.renderDetail(p, state.lang, t, !!state.user, state.want, state.wantTab);
 }
 
 /* ─────────── 操作 ─────────── */
@@ -220,10 +240,111 @@ function togglePikaState(id, key) {
   save();
 }
 
+/** 產生並下載分享圖 */
+async function doShare(btn) {
+  const byId = Object.create(null);
+  for (const p of state.list) byId[p.id] = p;
+  const items = curList()
+    .items.filter((w) => byId[w.id])
+    .map((w) => ({ ...byId[w.id], want: w }));
+  if (!items.length) return;
+
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = t("sharing");
+  try {
+    const blob = await buildShareImage(items, {
+      title: curList().name || t("shareTitle"),
+      dark: document.body.classList.contains("dark"),
+      lang: state.lang,
+    });
+    if (blob) {
+      downloadBlob(blob, `trade-list-${Date.now()}.png`);
+      ui.toast(t("shareDone"));
+    } else {
+      ui.toast(t("saveFailed"));
+    }
+  } catch (err) {
+    console.error("[share] failed:", err);
+    ui.toast(t("saveFailed"));
+  }
+  btn.disabled = false;
+  btn.textContent = label;
+}
+
+/** 目前作用中的清單 */
+function curList() {
+  return state.want.lists[state.wantTab];
+}
+
+/** 新增一筆交換需求（預設想要異色，因為交換的價值就在於重骰） */
+function wantNew(pid) {
+  if (!state.user) return;
+  const l = curList();
+  l.items.push({ id: pid, shiny: 1 });
+  state.openWant = l.items.length - 1;
+  drawDetail();
+  draw();
+  save();
+}
+
+/** 刪除一筆需求 */
+function wantDelete(idx) {
+  if (!state.user) return;
+  const i = Number(idx);
+  const l = curList();
+  if (!Number.isInteger(i) || !l.items[i]) return;
+  l.items.splice(i, 1);
+  // 正在編輯的那筆被刪掉就退回上一層
+  if (state.openWant === i) state.openWant = null;
+  else if (state.openWant !== null && state.openWant > i) state.openWant--;
+  drawDetail();
+  draw();
+  save();
+}
+
+/** 修改某筆需求的條件 */
+function wantSet(key, value) {
+  if (!state.user || state.openWant === null) return;
+  const w = curList().items[state.openWant];
+  if (!w) return;
+  if (key === "bg") {
+    if (value) w.bg = value;
+    else delete w.bg;
+  } else if (w[key]) {
+    delete w[key];
+  } else {
+    w[key] = 1;
+  }
+  drawDetail();
+  draw();
+  save();
+}
+
+/** 一鍵加入所有還沒 IV100 的傳說，預設想要異色 */
+function wantAddMissing() {
+  if (!state.user) return;
+  const l = curList();
+  let added = 0;
+  for (const p of state.list) {
+    if (p.iv100.has) continue;
+    // 已經有同樣「只要異色」的需求就不重複加
+    const dup = l.items.some((w) => w.id === p.id && w.shiny && !w.xxl && !w.xxs && !w.bg);
+    if (dup) continue;
+    l.items.push({ id: p.id, shiny: 1 });
+    added++;
+  }
+  draw();
+  if (added) save();
+  ui.toast(added ? `+${added}` : t("wantEmpty"));
+}
+
 /** 統一的存檔入口，確保所有紀錄一起送出 */
 function save() {
-  saveUser(state.user.uid, state.list, state.extraBg, state.pika, (status) =>
-    ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
+  saveUser(
+    state.user.uid,
+    { list: state.list, extraBg: state.extraBg, pika: state.pika, want: state.want },
+    (status) => ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
   );
 }
 
@@ -270,6 +391,7 @@ document.addEventListener("click", async (e) => {
   if (pikaOpen) {
     state.openPika = pikaOpen.dataset.pikaopen;
     state.openId = null;
+    state.openWant = null;
     drawDetail();
     ui.openSheet();
     return;
@@ -283,6 +405,74 @@ document.addEventListener("click", async (e) => {
   }
 
   // 皮卡丘面板裡的背卡開關
+  const wantNewBtn = e.target.closest("[data-wantnew]");
+  if (wantNewBtn && !wantNewBtn.disabled) {
+    wantNew(wantNewBtn.dataset.wantnew);
+    return;
+  }
+
+  const wantDel = e.target.closest("[data-wantdel]");
+  if (wantDel && !wantDel.disabled) {
+    wantDelete(wantDel.dataset.wantdel);
+    return;
+  }
+
+  const wantEdit = e.target.closest("[data-wantedit]");
+  if (wantEdit && !wantEdit.disabled) {
+    state.openWant = Number(wantEdit.dataset.wantedit);
+    drawDetail();
+    return;
+  }
+
+  const wantBack = e.target.closest("[data-wantback]");
+  if (wantBack) {
+    state.openWant = null;
+    state.openId = wantBack.dataset.wantback;
+    drawDetail();
+    return;
+  }
+
+  const wantSetBtn = e.target.closest("[data-wantset]");
+  if (wantSetBtn && !wantSetBtn.disabled) {
+    wantSet(wantSetBtn.dataset.wantset);
+    return;
+  }
+
+  const wantBg = e.target.closest("[data-wantbg]");
+  if (wantBg && !wantBg.disabled) {
+    wantSet("bg", wantBg.dataset.wantbg);
+    return;
+  }
+
+  const wtab = e.target.closest("[data-wanttab]");
+  if (wtab) {
+    state.wantTab = Number(wtab.dataset.wanttab);
+    state.openWant = null;
+    draw();
+    return;
+  }
+
+  if (e.target.id === "renameBtn" || e.target.closest("#renameBtn")) {
+    const l = curList();
+    const name = prompt(t("wantRenamePrompt"), l.name || "");
+    if (name !== null) {
+      l.name = name.trim().slice(0, 24);
+      draw();
+      save();
+    }
+    return;
+  }
+
+  if (e.target.id === "addMissingBtn" || e.target.closest("#addMissingBtn")) {
+    wantAddMissing();
+    return;
+  }
+
+  if (e.target.id === "shareBtn" || e.target.closest("#shareBtn")) {
+    await doShare(e.target.closest("#shareBtn") || e.target);
+    return;
+  }
+
   const bgKeyTog = e.target.closest("[data-bgkey]");
   if (bgKeyTog && !bgKeyTog.disabled) {
     toggleBg(bgKeyTog.dataset.bgkey, bgKeyTog.dataset.bgcard);
@@ -346,6 +536,7 @@ document.addEventListener("click", async (e) => {
   if (cell && cell.dataset.id) {
     state.openId = cell.dataset.id;
     state.openPika = null;
+    state.openWant = null;
     drawDetail();
     ui.openSheet();
     return;
@@ -477,6 +668,7 @@ watchAuth(async (user) => {
     state.list = g.list;
     state.extraBg = g.extraBg;
     state.pika = g.pika;
+    state.want = g.want;
     ui.closeSheet();
     draw();
     return;
@@ -497,6 +689,7 @@ watchAuth(async (user) => {
   state.list = loaded.list;
   state.extraBg = loaded.extraBg;
   state.pika = loaded.pika;
+  state.want = loaded.want;
   draw();
   if (ui.isSheetOpen()) drawDetail();
 });

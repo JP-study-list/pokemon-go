@@ -15,6 +15,12 @@
  * 它是獨立的收藏成就，不由 shiny / lucky 推導。
  *   bg:     { "gf26-global": ["p003*","d131"], ... }  背卡：卡片 → 已取得的項目
  *   pika:   ["normal", "reds-hat*", ...]              裝扮皮卡丘，同樣用 "*" 表示異色
+ *   want:   { lists: [{name, items:[{id,xxl,xxs,shiny,bg}]}, ...] }  交換清單
+ *
+ * 共四份清單，可以分別給不同的人看。每份清單裡同一隻寶可夢可以有多筆需求，
+ * 例如「異色超夢」與「有東京背卡的超夢」是兩個獨立的交換目標。
+ *
+ * 舊格式（單一陣列、或更早的物件）會在讀取時自動轉成第一份清單。
  *   updated: 時間戳
  *
  * 背卡的項目鍵有兩種：
@@ -146,12 +152,71 @@ export async function loadUser(uid) {
     list: buildList(d ? d.states : null, bg),
     extraBg: extractNonDexBg(bg),
     pika: Array.isArray(d && d.pika) ? d.pika.filter((x) => typeof x === "string") : [],
+    want: cleanWant(d && d.want),
   };
 }
 
 /** 未登入時顯示的唯讀列表 */
 export function guestList() {
-  return { list: buildList(null, null), extraBg: {}, pika: [] };
+  return { list: buildList(null, null), extraBg: {}, pika: [], want: emptyWant() };
+}
+
+export const WANT_LISTS = 4;
+
+/** 空白的四份清單 */
+export function emptyWant() {
+  return { lists: Array.from({ length: WANT_LISTS }, () => ({ name: "", items: [] })) };
+}
+
+/**
+ * 過濾交換清單，確保結構乾淨。
+ * 兩種舊格式都會自動轉成新格式的第一份清單，使用者不會掉資料。
+ */
+function cleanWant(want) {
+  const fresh = emptyWant();
+  if (!want) return fresh;
+
+  // 新格式
+  if (want.lists && Array.isArray(want.lists)) {
+    for (let i = 0; i < WANT_LISTS; i++) {
+      const l = want.lists[i];
+      if (!l || typeof l !== "object") continue;
+      fresh.lists[i] = {
+        name: typeof l.name === "string" ? l.name.slice(0, 24) : "",
+        items: Array.isArray(l.items)
+          ? l.items.map(normalizeWant).filter(Boolean).slice(0, 300)
+          : [],
+      };
+    }
+    return fresh;
+  }
+
+  // 舊格式 2：陣列 → 第一份清單
+  if (Array.isArray(want)) {
+    fresh.lists[0].items = want.map(normalizeWant).filter(Boolean).slice(0, 300);
+    return fresh;
+  }
+
+  // 舊格式 1：{ p003: {...} } → 每隻一筆，放進第一份清單
+  if (typeof want === "object") {
+    const out = [];
+    for (const [pid, v] of Object.entries(want)) {
+      if (!v || typeof v !== "object") continue;
+      out.push(normalizeWant({ ...v, id: pid }));
+    }
+    fresh.lists[0].items = out.filter(Boolean).slice(0, 300);
+  }
+  return fresh;
+}
+
+function normalizeWant(v) {
+  if (!v || typeof v !== "object" || typeof v.id !== "string" || !v.id) return null;
+  const e = { id: v.id };
+  if (v.xxl) e.xxl = 1;
+  if (v.xxs) e.xxs = 1;
+  if (v.shiny) e.shiny = 1;
+  if (typeof v.bg === "string" && v.bg) e.bg = v.bg;
+  return e;
 }
 
 let timer = null;
@@ -160,13 +225,11 @@ let pending = null;
 /**
  * 儲存（延遲寫入，連續操作只送一次）
  * @param {string} uid
- * @param {Array} list
- * @param {object} extraBg 不在圖鑑內的背卡紀錄
- * @param {Array} pika 裝扮皮卡丘紀錄
+ * @param {{list, extraBg, pika, want}} payload
  * @param {(status: "saved"|"failed") => void} onDone
  */
-export function saveUser(uid, list, extraBg, pika, onDone) {
-  pending = { uid, list, extraBg, pika };
+export function saveUser(uid, payload, onDone) {
+  pending = { uid, ...payload };
   clearTimeout(timer);
   timer = setTimeout(async () => {
     const job = pending;
@@ -176,6 +239,7 @@ export function saveUser(uid, list, extraBg, pika, onDone) {
         states: extractStates(job.list),
         bg: extractBg(job.list, job.extraBg),
         pika: job.pika || [],
+        want: job.want || emptyWant(),
         updated: Date.now(),
       });
       onDone("saved");
@@ -197,6 +261,7 @@ export async function flush() {
       states: extractStates(job.list),
       bg: extractBg(job.list, job.extraBg),
       pika: job.pika || [],
+      want: job.want || emptyWant(),
       updated: Date.now(),
     });
   } catch (err) {
