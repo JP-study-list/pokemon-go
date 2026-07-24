@@ -12,7 +12,7 @@
 
 import { artUrl } from "./data.js";
 import { typeInfo } from "./types.js";
-import { allCards, cardsFor, entriesOf } from "./backgrounds.js";
+import { allCards, cardsFor, cardsForCostume, entriesOf } from "./backgrounds.js";
 import { lookup } from "./pokedex.js";
 import { COSTUMES, costumeArt, findCostume, COSTUME_COUNT } from "./pikachu.js";
 
@@ -224,16 +224,12 @@ export function isSheetOpen() {
 export function renderAuth(user, t) {
   const box = $("#authArea");
   if (user) {
-    const avatar = user.photo
+    // 登入後只留頭像，登出移到設定選單裡
+    box.innerHTML = user.photo
       ? `<img class="avatar" src="${esc(user.photo)}" alt="" referrerpolicy="no-referrer">`
-      : "";
-    box.innerHTML = `
-      ${avatar}
-      <span class="who">${esc(user.name)}</span>
-      <button class="btn-text" type="button" id="signOutBtn">${t("signOut")}</button>`;
+      : `<span class="who">${esc(user.name)}</span>`;
   } else {
-    box.innerHTML = `
-      <button class="btn-signin" type="button" id="signInBtn">${t("signIn")}</button>`;
+    box.innerHTML = `<button class="btn-signin" type="button" id="signInBtn">${t("signIn")}</button>`;
   }
 }
 
@@ -252,17 +248,12 @@ export function renderChrome(lang, t) {
   $("#themeBtn").title = t("tipTheme");
   $("#menuBtn").title = t("tipMenu");
   $("#viewTitle").textContent = t("sideView");
-  $("#langTitle").textContent = t("sideLang");
   $("#statsTitle").textContent = t("sideStats");
   $("#filterTitle").textContent = t("sideFilter");
   document.querySelectorAll(".chip").forEach((c) => {
     const f = FILTERS.find((x) => x.id === c.dataset.filter);
     const el = c.querySelector(".txt");
     if (f && el) el.textContent = t(f.label);
-  });
-  document.querySelectorAll("#langs button").forEach((b) => {
-    b.classList.toggle("is-on", b.dataset.lang === lang);
-    b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false");
   });
 }
 
@@ -289,17 +280,6 @@ export function renderFilterCounts(list) {
     const el = c.querySelector(".count");
     if (el) el.textContent = n;
   });
-}
-
-export function buildLangSwitch(langs, current) {
-  $("#langs").innerHTML = langs
-    .map(
-      (l) =>
-        `<button type="button" data-lang="${l.code}" class="${
-          l.code === current ? "is-on" : ""
-        }">${l.label}</button>`
-    )
-    .join("");
 }
 
 /* ─────────── 提示訊息 ─────────── */
@@ -538,19 +518,117 @@ export function renderPikaGrid(pika, lang, t, canEdit, query) {
         .map((c) => {
           const has = owned.has(c.id);
           const isShiny = shiny.has(c.id);
-          const mark = `
-            <span class="shiny-mark${isShiny ? " is-on" : ""}${has ? "" : " is-locked"}"
-                  data-pikashiny="${c.id}" title="${esc(t("shiny"))}"
-                  role="button" aria-pressed="${isShiny ? "true" : "false"}">✦</span>`;
+          const pip = isShiny
+            ? `<span class="pips"><i class="pip" style="background:var(--shiny)"></i></span>`
+            : "";
           return `
-        <div class="cell bgcell${has ? " is-owned" : " is-empty"}">
-          <button class="bgcell-main" type="button" data-pika="${c.id}" ${canEdit ? "" : "disabled"}>
-            <img src="${costumeArt(c.file)}" alt="" loading="lazy" decoding="async">
-            <span class="nm">${esc(c[lang] || c.en)}</span>
-          </button>
-          ${canEdit ? mark : ""}
-        </div>`;
+        <button class="cell${has ? " is-owned" : " is-empty"}" type="button" data-pikaopen="${c.id}">
+          ${pip}
+          <img src="${costumeArt(c.file)}" alt="" loading="lazy" decoding="async">
+          <span class="nm">${esc(c[lang] || c.en)}</span>
+        </button>`;
         })
         .join("")}
     </div>`;
+}
+
+/** 裝扮皮卡丘的詳情面板 */
+export function renderPikaDetail(costumeId, pika, extraBg, lang, t, canEdit) {
+  const c = findCostume(costumeId);
+  if (!c) return;
+  const { owned, shiny } = pikaSets(pika);
+  const has = owned.has(c.id);
+  const isShiny = shiny.has(c.id);
+
+  const others = ["zh", "ja", "en"]
+    .filter((k) => k !== lang)
+    .map((k) => esc(c[k]))
+    .join(" · ");
+
+  const toggle = (key, label, on, color, disabled) => `
+    <button class="tog" type="button" data-pikakey="${key}" data-on="${on ? 1 : 0}"
+            style="--tog:${color}" ${canEdit && !disabled ? "" : "disabled"}>
+      <span>${label}</span><span class="sw" aria-hidden="true"></span>
+    </button>`;
+
+  // 這個裝扮出現在哪些背卡上
+  const bgCards = cardsForCostume(c.id);
+  const bgSection = bgCards.length
+    ? `
+    <p class="d-sect">${t("bgSection")}</p>
+    <div class="togs">
+      ${bgCards
+        .map(({ event, card, key }) => {
+          const raw = (extraBg && extraBg[card.id]) || [];
+          const got = raw.some((k) => k === key || k === `${key}*`);
+          return `
+        <button class="tog tog-bg" type="button" data-bgcard="${card.id}" data-bgkey="${key}"
+                data-on="${got ? 1 : 0}" style="--tog:var(--bg-card)" ${canEdit ? "" : "disabled"}>
+          <img class="bg-thumb" src="${card.img}" alt="" loading="lazy">
+          <span class="bg-meta">
+            <span class="bg-name">${esc(card[lang] || card.en)}</span>
+            <span class="bg-ev">${esc(event[lang] || event.en)}</span>
+          </span>
+          <span class="sw" aria-hidden="true"></span>
+        </button>`;
+        })
+        .join("")}
+    </div>`
+    : "";
+
+  $("#panel").innerHTML = `
+    <div class="d-top">
+      <img src="${costumeArt(c.file)}" alt="" decoding="async">
+      <div>
+        <h2>${esc(c[lang] || c.en)}</h2>
+        <p class="d-alt">${others}</p>
+      </div>
+    </div>
+
+    <p class="d-sect">${t("status")}</p>
+    <div class="togs">
+      ${toggle("has", t("pikaOwned"), has, "var(--iv)", false)}
+      ${toggle("shiny", t("shiny"), isShiny, "var(--shiny)", !has)}
+    </div>
+    ${bgSection}
+
+    <button class="btn-close" type="button" id="closeDetail">${t("close")}</button>`;
+}
+
+/* ─────────── 設定選單 ─────────── */
+
+export function renderSettings(user, langs, lang, t) {
+  const box = $("#settingsMenu");
+  box.innerHTML = `
+    <p class="set-title">${t("sideLang")}</p>
+    <div class="langs" id="langs">
+      ${langs
+        .map(
+          (l) =>
+            `<button type="button" data-lang="${l.code}" class="${
+              l.code === lang ? "is-on" : ""
+            }" aria-pressed="${l.code === lang ? "true" : "false"}">${l.label}</button>`
+        )
+        .join("")}
+    </div>
+    ${
+      user
+        ? `<div class="set-user">
+             ${user.photo ? `<img class="avatar" src="${esc(user.photo)}" alt="" referrerpolicy="no-referrer">` : ""}
+             <span class="who">${esc(user.name)}</span>
+           </div>
+           <button class="btn-text set-out" type="button" id="signOutBtn">${t("signOut")}</button>`
+        : ""
+    }`;
+}
+
+export function toggleSettings(force) {
+  const el = $("#settingsWrap");
+  const open = force === undefined ? el.hidden : force;
+  el.hidden = !open;
+  $("#settingsBtn").setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+export function settingsOpen() {
+  return !$("#settingsWrap").hidden;
 }
