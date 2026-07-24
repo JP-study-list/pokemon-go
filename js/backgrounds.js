@@ -428,6 +428,20 @@ export function cardsFor(pokemonId) {
   );
 }
 
+/**
+ * 某個裝扮皮卡丘可能擁有的所有背卡
+ * @returns {Array<{event, card, key}>} key 是該背卡上的項目鍵
+ */
+export function cardsForCostume(costumeId) {
+  const out = [];
+  for (const { event, card } of allCards()) {
+    for (const e of entriesOf(card)) {
+      if (e.costume === costumeId) out.push({ event, card, key: e.key });
+    }
+  }
+  return out;
+}
+
 /** 背卡總數（用於統計） */
 export function totalCardSlots() {
   return allCards().reduce((n, { card }) => n + card.pokemon.length, 0);
