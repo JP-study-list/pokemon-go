@@ -43,11 +43,6 @@
         </section>
 
         <section class="side-block">
-          <h2 class="side-title" id="langTitle"></h2>
-          <div class="langs" id="langs"></div>
-        </section>
-
-        <section class="side-block">
           <h2 class="side-title" id="statsTitle"></h2>
           <div class="stats" id="stats"></div>
         </section>
@@ -59,7 +54,14 @@
 
       </div>
 
-      <div class="side-foot" id="authArea"></div>
+      <div class="side-foot">
+        <div class="settings-wrap" id="settingsWrap" hidden>
+          <div class="settings-menu" id="settingsMenu"></div>
+        </div>
+        <button class="tool-btn" id="settingsBtn" type="button"
+                aria-expanded="false" aria-controls="settingsWrap">⚙</button>
+        <div class="auth-area" id="authArea"></div>
+      </div>
     </aside>
 
     <!-- 主內容 -->
