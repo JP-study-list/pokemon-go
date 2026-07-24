@@ -14,6 +14,7 @@ import { artUrl } from "./data.js";
 import { typeInfo } from "./types.js";
 import { allCards, cardsFor, entriesOf } from "./backgrounds.js";
 import { lookup } from "./pokedex.js";
+import { COSTUMES, costumeArt, findCostume, COSTUME_COUNT } from "./pikachu.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -399,11 +400,20 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
         owned = (p.bg || []).includes(card.id);
         isShiny = (p.bgShiny || []).includes(card.id);
       } else {
-        const d = lookup(e.dex, lang);
-        if (!d) return "";
-        name = d.name;
-        art = d.art;
-        no = d.no;
+        const cos = e.costume ? findCostume(e.costume) : null;
+        if (cos) {
+          // 裝扮皮卡丘：用裝扮的圖與名稱
+          const d = lookup(e.dex, lang);
+          name = d ? d.name : cos[lang] || cos.en;
+          art = costumeArt(cos.file);
+          no = e.dex;
+        } else {
+          const d = lookup(e.dex, lang);
+          if (!d) return "";
+          name = d.name;
+          art = d.art;
+          no = d.no;
+        }
         owned = extra.has(e.key);
         isShiny = extraShiny.has(e.key);
       }
@@ -449,7 +459,8 @@ export function renderCardDetail(cardId, list, extraBg, lang, t, canEdit) {
 export function buildViewSwitch() {
   $("#views").innerHTML = `
     <button type="button" data-view="dex" class="is-on"></button>
-    <button type="button" data-view="bg"></button>`;
+    <button type="button" data-view="bg"></button>
+    <button type="button" data-view="pika"></button>`;
 }
 
 /**
@@ -460,10 +471,86 @@ export function setView(view, t) {
     const on = b.dataset.view === view;
     b.classList.toggle("is-on", on);
     b.setAttribute("aria-pressed", on ? "true" : "false");
-    b.textContent = t(b.dataset.view === "dex" ? "viewDex" : "viewBg");
+    b.textContent = t(
+      b.dataset.view === "dex" ? "viewDex" : b.dataset.view === "bg" ? "viewBg" : "viewPika"
+    );
   });
-  // 搜尋與篩選只對寶可夢圖鑑有意義
-  const dex = view === "dex";
-  $("#q").hidden = !dex;
-  $("#filterBlock").hidden = !dex;
+  // 搜尋在寶可夢圖鑑與皮卡丘圖鑑都有用；篩選只對寶可夢圖鑑有意義
+  $("#q").hidden = view === "bg";
+  $("#filterBlock").hidden = view !== "dex";
+}
+
+/* ─────────── 皮卡丘圖鑑 ─────────── */
+
+/** 把 pika 陣列拆成「擁有」與「異色」兩個集合 */
+export function pikaSets(pika) {
+  const owned = new Set();
+  const shiny = new Set();
+  for (const raw of pika || []) {
+    if (typeof raw !== "string") continue;
+    const isShiny = raw.endsWith("*");
+    const id = isShiny ? raw.slice(0, -1) : raw;
+    owned.add(id);
+    if (isShiny) shiny.add(id);
+  }
+  return { owned, shiny };
+}
+
+export function renderPikaStats(pika, t) {
+  const { owned, shiny } = pikaSets(pika);
+  const total = COSTUME_COUNT;
+  const rows = [
+    [t("pikaOwned"), owned.size, "var(--iv)"],
+    [t("pikaShiny"), shiny.size, "var(--shiny)"],
+  ];
+  $("#stats").innerHTML = rows
+    .map(
+      ([label, n, color]) => `
+      <div class="stat-row">
+        <span class="l">${esc(label)}</span>
+        <span class="n" style="color:${color}">${n}<span class="of">/${total}</span></span>
+        <span class="bar"><i style="width:${total ? (n / total) * 100 : 0}%;background:${color}"></i></span>
+      </div>`
+    )
+    .join("");
+}
+
+export function renderPikaGrid(pika, lang, t, canEdit, query) {
+  const { owned, shiny } = pikaSets(pika);
+  const q = (query || "").trim().toLowerCase();
+  const items = COSTUMES.filter(
+    (c) =>
+      !q ||
+      c.zh.toLowerCase().includes(q) ||
+      c.ja.toLowerCase().includes(q) ||
+      c.en.toLowerCase().includes(q)
+  );
+
+  if (!items.length) {
+    $("#list").innerHTML = `<p class="empty">${t("empty")}</p>`;
+    return;
+  }
+
+  $("#list").innerHTML = `
+    ${canEdit ? "" : `<p class="guest-notice">${t("guestNotice")}</p>`}
+    <div class="grid">
+      ${items
+        .map((c) => {
+          const has = owned.has(c.id);
+          const isShiny = shiny.has(c.id);
+          const mark = `
+            <span class="shiny-mark${isShiny ? " is-on" : ""}${has ? "" : " is-locked"}"
+                  data-pikashiny="${c.id}" title="${esc(t("shiny"))}"
+                  role="button" aria-pressed="${isShiny ? "true" : "false"}">✦</span>`;
+          return `
+        <div class="cell bgcell${has ? " is-owned" : " is-empty"}">
+          <button class="bgcell-main" type="button" data-pika="${c.id}" ${canEdit ? "" : "disabled"}>
+            <img src="${costumeArt(c.file)}" alt="" loading="lazy" decoding="async">
+            <span class="nm">${esc(c[lang] || c.en)}</span>
+          </button>
+          ${canEdit ? mark : ""}
+        </div>`;
+        })
+        .join("")}
+    </div>`;
 }

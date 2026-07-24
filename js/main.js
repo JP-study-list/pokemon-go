@@ -17,6 +17,8 @@ const guest = guestList();
 const state = {
   user: null,
   list: guest.list,
+  // 裝扮皮卡丘紀錄，["normal", "reds-hat*", ...]
+  pika: guest.pika,
   // 不在圖鑑 79 隻內的背卡紀錄 { cardId: ["d131", ...] }
   extraBg: guest.extraBg,
   lang: DEFAULT_LANG,
@@ -33,9 +35,17 @@ let t = makeT(state.lang);
 /* ─────────── 繪製 ─────────── */
 
 function draw() {
+  ui.setView(state.view, t);
+
+  if (state.view === "pika") {
+    ui.renderPikaStats(state.pika, t);
+    ui.renderGuestNotice(false, t);
+    ui.renderPikaGrid(state.pika, state.lang, t, !!state.user, state.query);
+    return;
+  }
+
   ui.renderStats(state.list);
   ui.renderFilterCounts(state.list);
-  ui.setView(state.view, t);
 
   if (state.view === "bg") {
     // 背卡圖鑑自己有麵包屑導覽，訪客提示由各層自行處理
@@ -143,9 +153,29 @@ function toggleBgShiny(entryKey, cardId) {
   save();
 }
 
-/** 統一的存檔入口，確保 extraBg 一起送出 */
+/** 切換某個裝扮皮卡丘的擁有狀態 */
+function togglePika(id) {
+  if (!state.user) return;
+  const i = state.pika.findIndex((k) => k === id || k === `${id}*`);
+  if (i >= 0) state.pika.splice(i, 1);
+  else state.pika.push(id);
+  draw();
+  save();
+}
+
+/** 切換某個裝扮皮卡丘的異色標記（必須先擁有） */
+function togglePikaShiny(id) {
+  if (!state.user) return;
+  const i = state.pika.findIndex((k) => k === id || k === `${id}*`);
+  if (i < 0) return;
+  state.pika[i] = state.pika[i].endsWith("*") ? id : `${id}*`;
+  draw();
+  save();
+}
+
+/** 統一的存檔入口，確保所有紀錄一起送出 */
 function save() {
-  saveUser(state.user.uid, state.list, state.extraBg, (status) =>
+  saveUser(state.user.uid, state.list, state.extraBg, state.pika, (status) =>
     ui.toast(status === "saved" ? t("saved") : t("saveFailed"))
   );
 }
@@ -188,6 +218,18 @@ function setSidebar(open) {
 
 document.addEventListener("click", async (e) => {
   // 背卡圖鑑第三層的方格：點一下即切換擁有狀態
+  const pikaShiny = e.target.closest("[data-pikashiny]");
+  if (pikaShiny) {
+    if (!pikaShiny.classList.contains("is-locked")) togglePikaShiny(pikaShiny.dataset.pikashiny);
+    return;
+  }
+
+  const pikaCell = e.target.closest("[data-pika]");
+  if (pikaCell) {
+    if (!pikaCell.disabled) togglePika(pikaCell.dataset.pika);
+    return;
+  }
+
   // 異色標記要在背卡格之前判斷，否則點擊會被格子攔截
   const shinyMark = e.target.closest(".shiny-mark");
   if (shinyMark) {
@@ -223,6 +265,9 @@ document.addEventListener("click", async (e) => {
   if (viewBtn) {
     state.view = viewBtn.dataset.view;
     if (state.view === "bg") state.nav = { level: "grid", cardId: null };
+    state.query = "";
+    const q = document.querySelector("#q");
+    if (q) q.value = "";
     draw();
     if (isNarrow()) setSidebar(false);
     return;
@@ -356,6 +401,7 @@ watchAuth(async (user) => {
     const g = guestList();
     state.list = g.list;
     state.extraBg = g.extraBg;
+    state.pika = g.pika;
     ui.closeSheet();
     draw();
     return;
@@ -375,6 +421,7 @@ watchAuth(async (user) => {
 
   state.list = loaded.list;
   state.extraBg = loaded.extraBg;
+  state.pika = loaded.pika;
   draw();
   if (ui.isSheetOpen()) drawDetail();
 });

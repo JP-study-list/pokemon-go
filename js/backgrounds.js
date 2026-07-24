@@ -17,6 +17,8 @@
  *    { dex: 131 }              一般寶可夢，用全國圖鑑編號，名稱查 pokedex.js
  *    { dex: 131, note_zh:"布蘭琪風", note_ja:"ブランシェ", note_en:"Blanche" }
  *                              特殊造型，合併成本體但加註說明
+ *    { dex: 25, costume: "gotour-2026-calems-hat" }
+ *                              裝扮皮卡丘，圖片與名稱查 pikachu.js
  *
  * 造型一律合併成本體（例如帕底亞肯泰羅三種都算「肯泰羅」一格），
  * 需要區分時用 note 註記。
@@ -159,6 +161,23 @@ export const EVENTS = [
           { dex: 445 }, { dex: 448 }, { dex: 475 }, { dex: 687 },
         ],
       },
+      {
+        id: "gt26-x",
+        scope: "global",
+        img: "./img/bg/gotour2026-x.png",
+        zh: "GO Tour 2026 X",
+        ja: "GO Tour 2026 X",
+        en: "GO Tour 2026 X",
+        note_zh: "2/27～3/9 卡洛斯御三家兌換碼與 GO Tour 期間取得",
+        note_ja: "2/27〜3/9 カロス御三家コードと GO Tour 期間に入手",
+        note_en: "From the Kalos Starters promo code and GO Tour, Feb 27 – Mar 9",
+        pokemon: [
+          { dex: 25, costume: "gotour-2026-calems-hat", note_zh: "卡爾姆帽", note_ja: "カルムの帽子", note_en: "Calem's Hat" },
+          { dex: 25, costume: "gotour-2026-serenas-hat", note_zh: "莎莉娜帽", note_ja: "セレナの帽子", note_en: "Serena's Hat" },
+          { dex: 650 }, { dex: 653 }, { dex: 656 }, { dex: 679 },
+          "p041",
+        ],
+      },
     ],
   },
 ];
@@ -177,12 +196,15 @@ export function allCards() {
  */
 export function normalizeEntry(entry) {
   if (typeof entry === "string") {
-    return { key: entry, pid: entry, dex: null, note: null };
+    return { key: entry, pid: entry, dex: null, costume: null, note: null };
   }
+  // 裝扮皮卡丘的鍵要帶上裝扮 id，否則同編號的不同裝扮會互相覆蓋
+  const key = entry.costume ? `d${entry.dex}-${entry.costume}` : `d${entry.dex}`;
   return {
-    key: `d${entry.dex}`,
+    key,
     pid: null,
     dex: entry.dex,
+    costume: entry.costume || null,
     note: {
       zh: entry.note_zh || "",
       ja: entry.note_ja || "",

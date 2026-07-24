@@ -11,6 +11,7 @@
  * users/{uid}
  *   states: { p000: {xxl, xxs, iv100:{has,shiny,lucky}}, p001: {...} }
  *   bg:     { "gf26-global": ["p003*","d131"], ... }  背卡：卡片 → 已取得的項目
+ *   pika:   ["normal", "reds-hat*", ...]              裝扮皮卡丘，同樣用 "*" 表示異色
  *   updated: 時間戳
  *
  * 背卡的項目鍵有兩種：
@@ -132,12 +133,16 @@ export async function loadUser(uid) {
   const snap = await getDoc(doc(db, COLLECTION, uid));
   const d = snap.exists() ? snap.data() : null;
   const bg = d ? d.bg : null;
-  return { list: buildList(d ? d.states : null, bg), extraBg: extractNonDexBg(bg) };
+  return {
+    list: buildList(d ? d.states : null, bg),
+    extraBg: extractNonDexBg(bg),
+    pika: Array.isArray(d && d.pika) ? d.pika.filter((x) => typeof x === "string") : [],
+  };
 }
 
 /** 未登入時顯示的唯讀列表 */
 export function guestList() {
-  return { list: buildList(null, null), extraBg: {} };
+  return { list: buildList(null, null), extraBg: {}, pika: [] };
 }
 
 let timer = null;
@@ -148,10 +153,11 @@ let pending = null;
  * @param {string} uid
  * @param {Array} list
  * @param {object} extraBg 不在圖鑑內的背卡紀錄
+ * @param {Array} pika 裝扮皮卡丘紀錄
  * @param {(status: "saved"|"failed") => void} onDone
  */
-export function saveUser(uid, list, extraBg, onDone) {
-  pending = { uid, list, extraBg };
+export function saveUser(uid, list, extraBg, pika, onDone) {
+  pending = { uid, list, extraBg, pika };
   clearTimeout(timer);
   timer = setTimeout(async () => {
     const job = pending;
@@ -160,6 +166,7 @@ export function saveUser(uid, list, extraBg, onDone) {
       await setDoc(doc(db, COLLECTION, job.uid), {
         states: extractStates(job.list),
         bg: extractBg(job.list, job.extraBg),
+        pika: job.pika || [],
         updated: Date.now(),
       });
       onDone("saved");
@@ -180,6 +187,7 @@ export async function flush() {
     await setDoc(doc(db, COLLECTION, job.uid), {
       states: extractStates(job.list),
       bg: extractBg(job.list, job.extraBg),
+      pika: job.pika || [],
       updated: Date.now(),
     });
   } catch (err) {
