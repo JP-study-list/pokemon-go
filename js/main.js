@@ -25,6 +25,7 @@ const state = {
   filter: "all",
   query: "",
   openId: null,
+  openPika: null,
   // 背卡圖鑑的導覽狀態：level 為 grid（背卡總覽）或 cardDetail（單張背卡）
   view: "dex",
   nav: { level: "grid", cardId: null },
@@ -64,6 +65,10 @@ function draw() {
 }
 
 function drawDetail() {
+  if (state.openPika) {
+    ui.renderPikaDetail(state.openPika, state.pika, state.extraBg, state.lang, t, !!state.user);
+    return;
+  }
   const p = state.list.find((x) => x.id === state.openId);
   if (!p) return;
   ui.renderDetail(p, state.lang, t, !!state.user);
@@ -160,6 +165,7 @@ function togglePika(id) {
   if (i >= 0) state.pika.splice(i, 1);
   else state.pika.push(id);
   draw();
+  if (ui.isSheetOpen()) drawDetail();
   save();
 }
 
@@ -170,6 +176,7 @@ function togglePikaShiny(id) {
   if (i < 0) return;
   state.pika[i] = state.pika[i].endsWith("*") ? id : `${id}*`;
   draw();
+  if (ui.isSheetOpen()) drawDetail();
   save();
 }
 
@@ -188,6 +195,7 @@ function setLang(code) {
   } catch (_) {}
   ui.renderChrome(state.lang, t);
   ui.renderAuth(state.user, t);
+  ui.renderSettings(state.user, LANGS, state.lang, t);
   draw();
   if (ui.isSheetOpen()) drawDetail();
 }
@@ -218,15 +226,32 @@ function setSidebar(open) {
 
 document.addEventListener("click", async (e) => {
   // 背卡圖鑑第三層的方格：點一下即切換擁有狀態
-  const pikaShiny = e.target.closest("[data-pikashiny]");
-  if (pikaShiny) {
-    if (!pikaShiny.classList.contains("is-locked")) togglePikaShiny(pikaShiny.dataset.pikashiny);
+  const pikaOpen = e.target.closest("[data-pikaopen]");
+  if (pikaOpen) {
+    state.openPika = pikaOpen.dataset.pikaopen;
+    state.openId = null;
+    drawDetail();
+    ui.openSheet();
     return;
   }
 
-  const pikaCell = e.target.closest("[data-pika]");
-  if (pikaCell) {
-    if (!pikaCell.disabled) togglePika(pikaCell.dataset.pika);
+  // 皮卡丘面板裡的擁有／異色開關
+  const pikaKey = e.target.closest("[data-pikakey]");
+  if (pikaKey && !pikaKey.disabled) {
+    if (pikaKey.dataset.pikakey === "has") togglePika(state.openPika);
+    else togglePikaShiny(state.openPika);
+    return;
+  }
+
+  // 皮卡丘面板裡的背卡開關
+  const bgKeyTog = e.target.closest("[data-bgkey]");
+  if (bgKeyTog && !bgKeyTog.disabled) {
+    toggleBg(bgKeyTog.dataset.bgkey, bgKeyTog.dataset.bgcard);
+    return;
+  }
+
+  if (e.target.id === "settingsBtn" || e.target.closest("#settingsBtn")) {
+    ui.toggleSettings();
     return;
   }
 
@@ -273,9 +298,15 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+  // 點到選單以外的地方就收起設定
+  if (ui.settingsOpen() && !e.target.closest("#settingsWrap")) {
+    ui.toggleSettings(false);
+  }
+
   const cell = e.target.closest(".cell");
-  if (cell) {
+  if (cell && cell.dataset.id) {
     state.openId = cell.dataset.id;
+    state.openPika = null;
     drawDetail();
     ui.openSheet();
     return;
@@ -322,6 +353,7 @@ document.addEventListener("click", async (e) => {
   const langBtn = e.target.closest("#langs button");
   if (langBtn) {
     setLang(langBtn.dataset.lang);
+    ui.toggleSettings(false);
     return;
   }
 
@@ -344,6 +376,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "signOutBtn") {
+    ui.toggleSettings(false);
     await flush();
     await signOut();
     return;
@@ -352,7 +385,9 @@ document.addEventListener("click", async (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  if (ui.isSheetOpen()) {
+  if (ui.settingsOpen()) {
+    ui.toggleSettings(false);
+  } else if (ui.isSheetOpen()) {
     ui.closeSheet();
   } else if (isNarrow() && !document.body.classList.contains("side-closed")) {
     setSidebar(false);
@@ -396,6 +431,7 @@ watchAuth(async (user) => {
   const seq = ++authSeq;
   state.user = user;
   ui.renderAuth(user, t);
+  ui.renderSettings(user, LANGS, state.lang, t);
 
   if (!user) {
     const g = guestList();
@@ -440,11 +476,11 @@ function boot() {
     }
   } catch (_) {}
 
-  ui.buildLangSwitch(LANGS, state.lang);
   ui.buildViewSwitch();
   ui.buildFilterBar();
   ui.renderChrome(state.lang, t);
   ui.renderAuth(null, t);
+  ui.renderSettings(null, LANGS, state.lang, t);
 
   // 手機預設收合；桌機沿用上次的狀態
   let open = !isNarrow();
